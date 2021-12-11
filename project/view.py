@@ -1,22 +1,15 @@
-from models import *
-from controller import *
-
 def tournament_infos():
     # with the input from this function, the controller will instantiate the tournament object
     pass
 
+def insert_player_info():
+    player_surname: str = input(f"Please enter the player's surname")
+    player_first_name: str = input(f"Please enter the player's first name")
+    player_birthday: str = input(f"Please enter the player's date of birth")
+    player_gender = input(f"Please enter the player's gender")
+    player_rank = input(f"Please enter the player's rank")
+    return player_surname, player_first_name, player_birthday, player_gender, player_rank
 
-def insert_player_names(tournament):
-    # with the input from this function, the controller will add the players to the tournament object
-    player1 = input(f"Please enter the player names according to their ranking \n"
-                    f"1.")
-    player2 = input("2.")
-    player3 = input("3.")
-    player4 = input("4.")
-    player5 = input("5.")
-    player6 = input("6.")
-    player7 = input("7.")
-    player8 = input("8.")
 
 def define_time_control(tournament):
     time_control = input(f"what time-control type should the {tournament} implement ? Enter"
