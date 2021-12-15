@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from dataclasses import field
+from typing import List
+from types import MethodType
 
 
 @dataclass
@@ -20,6 +23,9 @@ class Tournament:
     name: str
     venue: str
     date: str
+    # The tournament should be defined just before the rounds and each time we define a new round
+    # with the relevant name of the tournament, we need to append a round to the tournament. We need to
+    # take the tournament name from the view and give it to the rounds creator.
     rounds: Round
     players: int
     description: str
@@ -31,15 +37,23 @@ class Tournament:
 class Player:
     # Here again, how should the date_of_birth be stored ?
     # For each of those attrs, some formatting is necessary. Otherwise, it's unuseful info.
+
     last_name: str
     first_name: str
     date_of_birth: str
     sex: str
     ranking: int
+    opponents_faced: List[int] = field(default_factory=list)
     result_field: int = 0
 
+    def add(self, value):
+        self.opponents_faced.append(value)
+
+
     def __str__(self):
-        return f"Player({self.last_name} ranking: {self.ranking} result field: {self.result_field})"
+        return f"Player({self.last_name} ranking: {self.ranking} " \
+               f"result field: {self.result_field} opponents: {self.opponents_faced} )"
 
     def __repr__(self):
         return self.__str__()
+
