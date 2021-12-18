@@ -1,149 +1,67 @@
-from dataclasses import dataclass
 from operator import attrgetter
+from typing import Dict, List
 
-from models import Player, Round, Tournament
-from view import insert_player_info
+from models import Player, Round, Tournament, Match
+from view import insert_player_info, tournament_info, insert_results
 
 """We are figuring out the basic logic for an 16 person tournament"""
 
-@dataclass
-class Match:
-    player1: Player
-    player2: Player
-    result: str
-    round: str
+# Assuming for each new tournament, a new script will be run,
+# we only need one tournament instance per script. The attributes are requested in the WIEW module.
+tournament = Tournament(*tournament_info())
 
-    def return_result(self):
-        # We take the needed letter from the view and we return the results in the correct format
-        if self.result == "W":
-            points_player1 = 1
-            points_player2 = 0
-        elif self.result == "L":
-            points_player1 = 0
-            points_player2 = 1
-        elif self.result == "D":
-            points_player1 = 0.5
-            points_player2 = 0.5
-        else:
-            print('please enter "W", "L" or "D"')
-            raise TypeError
-        results = [(self.player1, points_player1), (self.player2, points_player2)]
-        return results
-
+# the input is necessarily a string. Let's convert the attrs we want as integers.
+tournament.players_number = int(tournament.players_number)
+tournament.number_of_rounds = int(tournament.number_of_rounds)
 
 """ There seems to be a conflict between MVC and OOP. The thing is that the MODEL shouldn't define any process. 
 Therefore, the classes in the MODEL should define no method. However, we need to act upon the 
 instances of those classes. To do so, I see two possibilities (ofc, they may be others I ignore).
-The first one is to define some func in the global scope that acts upon the instance attributes. But this is not very OOP.
-I should modify instance properties only through the interface defined by the class. 
+The first one is to define some func in the global scope that acts upon the instance attributes. 
+But this is not very OOP. I should modify instance properties only through the interface defined by the class. 
 The second one is to bind some function to the class in the CONTROLLER. I think it is the best approach although the 
-downside is that the properties and the behaviours of a class will be defined in two different files. I will define all
-those behaviours down here so I can easily find them.   
+downside is that the properties and the behaviours of a class will be defined in two different files. 
+I will define all those behaviours down here so I can easily find them.   
 """
+
+
+def convert_match_result_into_points(self):
+    # We take the needed letter from the view and we return the results in the correct format
+    if self.result == "W":
+        points_player1 = 1
+        points_player2 = 0
+    elif self.result == "L":
+        points_player1 = 0
+        points_player2 = 1
+    elif self.result == "D":
+        points_player1 = 0.5
+        points_player2 = 0.5
+    else:
+        print('please enter "W", "L" or "D"')
+        raise TypeError
+    results = [(self.player1, points_player1), (self.player2, points_player2)]
+    return results
+
+
+Match.convert_match_result_into_points = convert_match_result_into_points
+
 
 def add_opponent(self, value):
     self.opponents_faced.append(value)
 
+
 Player.add_opponent = add_opponent
 
 
-"""
-In the first round, for a 16 player tournament, nr 1 plays w/ nr 9, nr 2 w/ nr 10 and so on. 
-In the second round, rankings are updated and then nr1 plays w/nr2, nr3 plays w/ nr4 and so on. 
-For the first round, we rank players by their rankings. 
-The Player instances and the list ranking them should be created by a function
-after the manager input the player info. 
-We will mimic a 16 players tournament, 3 rounds. We need to make sure that players do not meet each other twice. 
-Why a 16 players tournament? 
-Because with less players, the chance of player meeting twice are too small.
-"""
-
-
-
-"""he only argument of the three following functions should be given when the program starts. We should take it 
-from the tournament instance. """
-
-def collect_player_info_from_view(number_of_players: int):
-    """
-    The insert_player_info() from the view module returns a tuple.
-    From that tuple, we are making two lists. The first one contains player names. In the dictionary we will build
-    with the create_player_instances function, those names are going to be the keys.
-    The second list contains a tuple with the player info. Those info are going to be used to create Player instances
-    with the create_player_instances function. Those Player instances are going to be the values of the dict returned
-    by that function.
-    """
-    player_names: str = []
-    player_attrs: tuple = []
-    for _ in range(number_of_players):
-        attrs = insert_player_info()
-        name = attrs[0].lower()
-        player_attrs.append(attrs)
-        player_names.append(name)
-    return player_names, player_attrs
-
-def format_player_info(number_of_players: int):
-# The previous func returns a tuple containing two lists. We zip those two lists into a dictionnary.
-    player_names, player_attrs = collect_player_info_from_view(number_of_players)
-    if len(player_names) == len(player_attrs):
-        # I see no config in which the two lists won't be of equal length, but is better to catch errors soon.
-        player_names_and_attrs_info = dict(zip(player_names, player_attrs))
-    return player_names_and_attrs_info
-
-
-def create_player_instances(number_of_players: int):
-    names_and_attrs = format_player_info(number_of_players)
-    dict_with_player_instances = {}
-    for name, attrs in names_and_attrs.items():
-        dict_with_player_instances[name] = Player(*attrs)
-    return dict_with_player_instances
-
-
-""" We need to write everything that follows with the input format in mind. 
-"""
-
-
-all_players = {
-"macron" : Player("Macron", "Emmanuel", "1977", "men", 1),
-"erdogan" : Player("Erdogan", "Recep", "1954", "men", 2),
-"johnson" : Player("Johnson", "Boris", "1964", "men", 3),
-"scholz" : Player("Scholz", "Olaf", "1958", "men", 4),
-"biden" : Player("Biden", "Joe", "1942", "men", 5),
-"jinping" : Player("Jinping", "Xi", "1953", "men", 6),
-"radev" : Player("Radev", "Roumen", "1963", "men", 7),
-"iohannis" : Player("Iohannis", "Klaus", "1959", "men", 8),
-"modi" : Player("Modi", "Narendra", "1950", "men", 9),
-"putin" : Player("Putin", "Vladimir", "1952", "men", 10),
-"draghi" : Player("Draghi", "Mario", "1947", "men", 11),
-"orban" : Player("Orban", "Viktor", "1963", "men", 12),
-"kurz" : Player("Kurz", "Sebastian", "1986", "men", 13),
-"sanchez" : Player("Sanchez", "Pedro", "1972", "men", 14),
-"ardern" : Player("Ardern", "Jacinda", "1980", "women", 15),
-"marin" : Player("Marin", "Sanna", "1986", "women", 16),
-}
-
-all_players_in_list_format = list(all_players.values())
-
-
-def pairing_for_first_round():
-    # is it possible that the tournament has an odd number of players ?
-    players = all_players_in_list_format
-    half = len(players) // 2
-    first_group = players[:half]
-    second_group = players[half:]
-    pairing = []
-    for first_group_player, second_group_player in zip(first_group, second_group):
-        pairing.append((first_group_player, second_group_player))
-    return pairing
-
-pairing_for_first_round()
-
-""" DISCLAIMER : I know there are easier workarounds to do what follows, 
+""" 
+Below comes a useful decorator aiming at beautifying the info send to the VIEW.
+DISCLAIMER : I know there are easier workarounds to do what follows, 
 but given the fact I spent 2 hours understanding how dunder method overriding at instance level works, 
 I want to use it. I may change the code before the presentation though.  
 """
 
 
-def shorten_player_representation(players: Player):
+def shorten_player_representation(players: List[Player]):
     overriding_method = {'__str__': lambda self: self.__getattribute__('last_name')}
     for player in players:
         player.__class__ = type('class_with_shorter_representation_inheriting_from_Player',
@@ -152,14 +70,14 @@ def shorten_player_representation(players: Player):
         yield player
 
 
-def lenghten_player_representation(players: Player):
+def lenghten_player_representation(players: List[Player]):
     for player in players:
         player.__class__ = Player
         yield player
 
 
 def beautify_player_representation(func):
-    def wrapper(players:Player):
+    def wrapper(players: List[Player]):
         # shortening the representation of each player in order to make it suitable for the view.
         shortened_representation_players = []
         for player in shorten_player_representation(players):
@@ -175,48 +93,211 @@ def beautify_player_representation(func):
     return wrapper
 
 
+"""
+Here comes the requesting, storing of players in dict then list format
+"""
+
+
+def request_players_info(number_of_players: int):
+    players = []
+    for _ in range(number_of_players):
+        player = insert_player_info()
+        players.append(player)
+    return players
+
+
+def store_player_instances(number_of_players: int):
+    players_info = request_players_info(number_of_players)
+
+    player_names = []
+    for player_info in players_info:
+        player_name = player_info[0]
+        player_names.append(player_name)
+
+    player_instances = []
+    for player_info in players_info:
+        player_instance = Player(*player_info)
+        player_instances.append(player_instance)
+
+    all_players_in_dict_format = {}
+    for name, instance in zip(player_names, player_instances):
+        all_players_in_dict_format[name] = instance
+
+    return all_players_in_dict_format
+
+
+def store_player_instances_in_list(number_of_players: int):
+    all_players_in_dict_format = store_player_instances(number_of_players)
+
+    all_players_in_list_format = []
+    for player_instance in all_players_in_dict_format.values():
+        all_players_in_list_format.append(player_instance)
+
+    return all_players_in_list_format
+
+
+"""
+Below comes the pairing and annoucing of the matches for the first round 
+"""
+
+#all_players_in_list_format = store_player_instances_in_list(tournament.players_number)
+
+
+def pairing_for_first_round(players: List[Player]):
+    half = len(players) // 2
+    first_group = players[:half]
+    second_group = players[half:]
+
+    pairing = []
+    for first_group_player, second_group_player in zip(first_group, second_group):
+        pairing.append((first_group_player, second_group_player))
+    print(len(pairing))
+    return pairing
+
+
 @beautify_player_representation
-def announce_pairing_for_first_round(list_of_players):
+def announce_pairing_for_first_round(players: List[Player]):
     # should this go directly in the view ? probably not, because there is some method overriding.
     # for a 16 player tournament, pairs[0] should meet pairs[8], pairs[1] should meet pairs[9] and so on.
-    pairs = pairing_for_first_round(list_of_players)
-    pairing_announcement = []
+    pairs = pairing_for_first_round(players)
+
+    pairing_announcement = ["For the first round"]
     for pair in pairs:
         pairing_announcement.append(f'{pair[0]} will meet {pair[1]}')
+
     return pairing_announcement
 
 
 #announce_pairing_for_first_round(all_players_in_list_format)
 
-""" The following is a flow proposal : 
+
+""" 
+The following is a flow proposal : 
 1) program announces the matches for the first round.
 2) matches took place and the manager inserted the result (in the view).
 3) program instantiates the matches and the corresponding round. 
 3) the program pairs the player with the swiss algorithm for subsequent rounds.
-We also need to give each round a start and end datetime that will be set depending on two criteria : the 
-number of expected rounds AND the time_control property of the corresponding Tournament instance. Should we 
-foresee a break time between rounds ? and if yes, of what time ?  
+
+TODO: We also need to give each round a start and end datetime that will be set depending on two criteria. 
+First, the number of expected rounds AND second, the time_control property of the corresponding Tournament instance.
+Should we foresee a break time between rounds ? and if yes, how long should that break be ?  
 """
 
-# the Match instances and the corresponding round should be instantiated just after the manager wrote the results
-
-p = all_players
-match1 = Match(p["macron"], p["modi"], "W", 'round1')
-match2 = Match(p["erdogan"], p["putin"], "W", 'round1')
-match3 = Match(p["johnson"], p["draghi"], "D", 'round1')
-match4 = Match(p["scholz"], p["orban"], "L", 'round1')
-match5 = Match(p["biden"], p["kurz"], "D", 'round1')
-match6 = Match(p["jinping"], p["sanchez"], "L", 'round1')
-match7 = Match(p["radev"], p["ardern"], "D", 'round1')
-match8 = Match(p["iohannis"], p["marin"], "L", 'round1')
-matches_round1 = [match1, match2, match3, match4, match5, match6, match7, match8]
-
-round1 = Round("round1", "international politics", matches_round1)
+""" The round should be instantiated just before we request the match results. 
+It's list_of_matches default arg will be given a non-None value afterwards. 
+the Match instances should be instantiated just after the manager wrote the results.  
+"""
 
 
-def get_opponents_and_match_result(player1: Player, player2: Player, match: Match):
-    # We take the results in the right format from the return_results match method.
-    results = match.return_result()
+def instantiate_round(round_number: int):
+    # the inconvenience of dynamically creating an obj is that you recreate the
+    # obj each time you need it. Given that we store rounds in the Tournament instance,
+    # and maybe in other locations, I hope this recreation doesn't create bugs.
+    round_name = f"round{round_number}"
+    round_instance = Round(round_name, tournament)
+    return round_name, round_instance
+
+
+def store_rounds(round_number: int):
+    round_name, round_instance = instantiate_round(round_number)
+    round_instances = {}
+    if round_instance not in round_instances.values():
+        round_instances[round_name] = round_instance
+    if len(round_instances) > tournament.number_of_rounds:
+        print("there are more rounds than originally declared")
+        raise IndexError
+
+    return round_instances
+
+
+round1_name, round1_instance = instantiate_round(tournament.number_of_rounds)
+
+
+def request_match_results(players: List[Player]):
+    players_pairs = pairing_for_first_round(players)
+
+    results = []
+    for i in range(len(players_pairs)):
+        player1 = players_pairs[i][0]
+        match_result = insert_results(player1.last_name)
+        results.append(match_result)
+
+    return results
+
+
+def collect_first_round_matches_attributes(players: List[Player]):
+    number_of_matches = int(tournament.players_number) // 2
+    player_pairs_for_first_round = pairing_for_first_round(players)
+
+    if len(player_pairs_for_first_round) != number_of_matches:
+        print("the number of players in the tournament doesn't match the number of matches choosen"
+              " this script assumes all players have a match every round")
+        raise IndexError
+
+    match_results = request_match_results(players)
+    match_round = instantiate_round(1)
+
+    match_instances_attributes = []
+    for i in range(number_of_matches):
+        match_players_1 = player_pairs_for_first_round[i][0]
+        match_players_2 = player_pairs_for_first_round[i][1]
+        match_result = match_results[i]
+        match_instances_attributes.append((match_players_1, match_players_2, match_result, match_round))
+
+    return match_instances_attributes
+
+
+def instantiate_and_store_first_round_matches_in_dict(players: List[Player]):
+    # this function should probably be refactored (does two things), but it also seems to be a short func
+    matches_attributes = collect_first_round_matches_attributes(players)
+    first_round_matches = {}
+
+    for i in range(len(matches_attributes)):
+        match_name = f'match{i + 1}'
+        match_instance = Match(*matches_attributes[i])
+        first_round_matches.update({match_name: match_instance})
+
+    return first_round_matches
+
+
+#matches_first_round = instantiate_and_store_first_round_matches_in_dict(all_players_in_list_format)
+
+"""
+Below we append the matches that just happened to their corresponding round. We also append
+the round to her corresponding tournament. Note that the two operations must happen in this order. 
+"""
+
+
+def append_matches_to_round(matches: Dict[str, Match], round: Round):
+    for match in matches.values():
+        if round == match.round:
+            round.list_of_matches.append(match)
+        else:
+            print(f"the {match} didn't happen in this round")
+            raise ValueError
+
+
+#append_matches_to_round(matches_first_round, round1_instance)
+
+def append_round_to_tournament(tournament: Tournament, round: Round):
+    if tournament == round.tournament:
+        tournament.rounds.append(round)
+    else:
+        print(f"this {round} didn't happen in this tournament")
+        raise ValueError
+
+
+#append_round_to_tournament(tournament, round1_instance)
+
+
+"""
+below we update all the players attributes in accordance to the result of the end that just happened.
+"""
+
+
+def check_match_result(player1: Player, player2: Player, match: Match):
+    # We take the results in the right format from the request_match_results match method.
+    results = match.convert_match_result_into_points
 
     # We should give the right players the right results
     player1_from_results = results[0][0]
@@ -229,7 +310,7 @@ def get_opponents_and_match_result(player1: Player, player2: Player, match: Matc
 
 
 def change_players_result_field(player1: Player, player2: Player, match: Match):
-    results = get_opponents_and_match_result(player1, player2, match)
+    results = check_match_result(player1, player2, match)
 
     # Updating the result_field attr of the player
     player1_result = results[0][1]
@@ -238,8 +319,8 @@ def change_players_result_field(player1: Player, player2: Player, match: Match):
     player2.result_field += player2_result
 
 
-def update_player_faced_opponents_record(player1: Player, player2: Player, match: Match):
-    results = get_opponents_and_match_result(player1, player2, match)
+def update_player_faced_opponents_attr(player1: Player, player2: Player, match: Match):
+    results = check_match_result(player1, player2, match)
 
     # Updating the opponents_faced attr of the player
     player1_opponent = results[1][0]
@@ -253,16 +334,23 @@ def update_player_faced_opponents_record(player1: Player, player2: Player, match
     player2.add(player2_opponent)
 
 
-def update_all_players_in_round_points_and_record(matches: list):
+def update_all_players_attrs_after_round(matches: list):
     for match in matches:
-        change_players_result_field(match.return_result()[0][0], match.return_result()[1][0], match)
-        update_player_faced_opponents_record(match.return_result()[0][0], match.return_result()[1][0], match)
+        player1 = match.convert_match_result_into_points()[0][0]
+        player2 = match.convert_match_result_into_points()[1][0]
+        change_players_result_field(player1, player2, match)
+        update_player_faced_opponents_attr(player1, player2, match)
 
 
-update_all_players_in_round_points_and_record(matches_round1)
+#update_all_players_attrs_after_round(matches_first_round)
 
 
-def rank_players_for_subsequent_round(players_ranked_in_previous_round: list):
+"""
+the below operations reorder the ranks to transition from one round to the other. 
+"""
+
+
+def rank_players_for_subsequent_round(players_ranked_in_previous_round: List[Player]):
     # I need to figure out a more elegant way to sort by points in decreasing order
     # then, ONLY IF players have an equal number of points, by rank in ascending order.
     # Right now, the sorting is done in two steps. First, I'm negating the rank of each player,
@@ -279,6 +367,10 @@ def rank_players_for_subsequent_round(players_ranked_in_previous_round: list):
     for player in players_ranked_in_previous_round:
         player.ranking = -player.__getattribute__("ranking")
 
+    # Updating players' rank attribute in accordance to the ranking we just done
+    for player in players_sorted_by_points_then_rank:
+        player.ranking = players_sorted_by_points_then_rank.index(player) + 1
+
     return players_sorted_by_points_then_rank
 
 
@@ -287,16 +379,19 @@ def avoid_player_meeting_twice(players_ranked_in_previous_round: list):
     p = players_ranked_for_subsequent_round
     unavoidable_duplicata = False
 
-    # sorting the list in order to avoid duplicata
+    # rearranging the list in order to avoid duplicata. The logic is the following. If two players are
+    # about to meet, we need to swap one of the players w/ another one located two indexes further in the list.
     for _ in range(len(p)):
         for i in range(len(p)):
-            if i == 0: continue
+            if i == 0:
+                continue
             if p[i - 1].last_name in p[i].opponents_faced:
                 p[i], p[(i + 2) % (len(p))] = p[(i + 2) % (len(p))], p[i]
 
     # checking the sorted list for unavoidable match duplicata
     for i in range(len(p)):
-        if i == 0: continue
+        if i == 0:
+            continue
         if p[i - 1].last_name in p[i].opponents_faced:
             unavoidable_duplicata = True
             break
@@ -309,16 +404,17 @@ def announce_pairing_for_subsequent_round(players_ranked_in_previous_round):
     paired_players, unavoidable_duplicata = avoid_player_meeting_twice(players_ranked_in_previous_round)
     p = paired_players
 
-    pairing_announcement = []
-    pairing_announcement.append(f'{p[0]} will meet {p[1]}')
+    pairing_announcement = [f'{p[0]} will meet {p[1]}']
+
     for i in range(len(p)):
         if i == 0 or i == 1 or i == 2:
             continue
-        if i >= 3 and (i%2) != 0:
+        if i >= 3 and (i % 2) != 0:
             pairing_announcement.append(f'{p[i-1]} will meet {p[i]}')
-    if unavoidable_duplicata == True:
+
+    if unavoidable_duplicata is True:
         pairing_announcement.append("given the number of matches and players in tournament, "
-              "it is unavoidable that players meet twice")
+                                    "it is unavoidable that players meet twice")
 
     return pairing_announcement
 
@@ -335,29 +431,18 @@ def announce_pairing_for_subsequent_round(players_ranked_in_previous_round):
 # that func needs to keep track of the number of the round AND
 # of all the matches already created so it doesn't override a previous Match instance.
 
-match9 = Match(p["macron"], p["erdogan"], "L", 'round2')
-match10 = Match(p["orban"], p["sanchez"], "W", 'round2')
-match11 = Match(p["marin"], p["johnson"], "D", 'round2')
-match12 = Match(p["biden"], p["radev"], "D", 'round2')
-match13 = Match(p["draghi"], p["kurz"], "D", 'round2')
-match14 = Match(p["ardern"], p["scholz"], "W", 'round2')
-match15 = Match(p["jinping"], p["iohannis"], "W", 'round2')
-match16 = Match(p["modi"], p["putin"], "W", 'round2')
-matches_round2 = [match9, match10, match11, match12, match13, match14, match15, match16]
 
-round2 = Round("round2", "international politics", matches_round2)
+#update_all_players_attrs_after_round(matches_round2)
 
-update_all_players_in_round_points_and_record(matches_round2)
-
-avoid_player_meeting_twice(all_players_in_list_format)
-
+#avoid_player_meeting_twice(all_players_in_list_format)
 
 
 """ All good for the second round too. Let's create a func that announces the current rank. 
 """
 
+
 @beautify_player_representation
-def announce_ranking(players:Player):
+def announce_ranking(players: List[Player]):
     ranking_annoucement = []
     p = rank_players_for_subsequent_round(players)
     for i in range(len(p)):
@@ -365,6 +450,4 @@ def announce_ranking(players:Player):
     print(ranking_annoucement)
     return ranking_annoucement
 
-
-print(avoid_player_meeting_twice(all_players_in_list_format))
-announce_ranking(all_players_in_list_format)
+#rank_players_for_subsequent_round(all_players_in_list_format)

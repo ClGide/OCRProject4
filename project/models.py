@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from dataclasses import field
 from typing import List
-from types import MethodType
+
 
 
 @dataclass
 class Round:
     # the two date times should be clearly epoch date
     name_field: str
-    tournament: str
+    tournament: str  # Tournament instance, but I would get an error
     list_of_matches: list = None
     start_datetime: int = 0
     end_datetime: int = 0
@@ -26,12 +26,11 @@ class Tournament:
     # The tournament should be defined just before the rounds and each time we define a new round
     # with the relevant name of the tournament, we need to append a round to the tournament. We need to
     # take the tournament name from the view and give it to the rounds creator.
-    rounds: Round
-    players: int
+    players_number: int
     description: str
     time_control: str
     number_of_rounds: int = 4
-
+    rounds: List[Round] = None
 
 @dataclass
 class Player:
@@ -51,9 +50,15 @@ class Player:
 
 
     def __str__(self):
-        return f"Player({self.last_name} ranking: {self.ranking} " \
-               f"result field: {self.result_field} opponents: {self.opponents_faced} )"
+        return f"Player({self.last_name} | ranking: {self.ranking} | " \
+               f"result field: {self.result_field} | opponents: {self.opponents_faced} |||)"
 
     def __repr__(self):
         return self.__str__()
 
+@dataclass
+class Match:
+    player1: Player
+    player2: Player
+    result: str
+    round: Round
