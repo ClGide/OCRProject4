@@ -27,6 +27,13 @@ def insert_results(player1:str):
                    "'L' if he lost and 'D  if the match ended in a draw \n")
     return match_result
 
+
 def modify_tournament_description():
     pass
 
+# if I import it before, I'll run into circular importing
+from controller import announce_pairing_for_first_round
+
+def display_first_round_matches():
+    pairing_announcement = announce_pairing_for_first_round()
+    print(pairing_announcement)

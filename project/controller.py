@@ -8,11 +8,7 @@ from view import insert_player_info, tournament_info, insert_results
 
 # Assuming for each new tournament, a new script will be run,
 # we only need one tournament instance per script. The attributes are requested in the WIEW module.
-tournament = Tournament(*tournament_info())
-
-# the input is necessarily a string. Let's convert the attrs we want as integers.
-tournament.players_number = int(tournament.players_number)
-tournament.number_of_rounds = int(tournament.number_of_rounds)
+#tournament = Tournament(*tournament_info())
 
 """ There seems to be a conflict between MVC and OOP. The thing is that the MODEL shouldn't define any process. 
 Therefore, the classes in the MODEL should define no method. However, we need to act upon the 
@@ -24,7 +20,57 @@ downside is that the properties and the behaviours of a class will be defined in
 I will define all those behaviours down here so I can easily find them.   
 """
 
+"""
+defining methods of the Tournament class
+"""
+def correct_attributes_type(self):
+    # the input is necessarily a string. Let's convert the attrs we want as integers.
+    self.players_number = int(self.players_number)
+    self.number_of_rounds = int(self.number_of_rounds)
 
+
+Tournament.correct_attributes_type = correct_attributes_type
+
+
+def store_player_instances(number_of_players: int):
+    players_info = requesting_players_info(number_of_players)
+
+    player_names = []
+    for player_info in players_info:
+        player_name = player_info[0]
+        player_names.append(player_name)
+
+    player_instances = []
+    for player_info in players_info:
+        player_instance = Player(*player_info)
+        player_instances.append(player_instance)
+
+    all_players_in_dict_format = {}
+    for name, instance in zip(player_names, player_instances):
+        all_players_in_dict_format[name] = instance
+
+    return all_players_in_dict_format
+
+
+Tournament.store_player_instances = staticmethod(store_player_instances)
+
+
+def store_player_instances_in_list(number_of_players: int):
+    all_players_in_dict_format = store_player_instances(number_of_players)
+
+    all_players_in_list_format = []
+    for player_instance in all_players_in_dict_format.values():
+        all_players_in_list_format.append(player_instance)
+
+    return all_players_in_list_format
+
+
+Tournament.store_player_instances_in_list = staticmethod(store_player_instances_in_list)
+
+
+"""
+defining methods of the Match class
+"""
 def convert_match_result_into_points(self):
     # We take the needed letter from the view and we return the results in the correct format
     if self.result == "W":
@@ -46,15 +92,20 @@ def convert_match_result_into_points(self):
 Match.convert_match_result_into_points = convert_match_result_into_points
 
 
+"""
+defining methods of the Player class
+"""
 def add_opponent(self, value):
     self.opponents_faced.append(value)
 
 
 Player.add_opponent = add_opponent
 
+print(add_opponent)
+
 
 """ 
-Below comes a useful decorator aiming at beautifying the info send to the VIEW.
+Below comes a useful decorator aiming at beautifying the info sent to the VIEW.
 DISCLAIMER : I know there are easier workarounds to do what follows, 
 but given the fact I spent 2 hours understanding how dunder method overriding at instance level works, 
 I want to use it. I may change the code before the presentation though.  
@@ -98,7 +149,7 @@ Here comes the requesting, storing of players in dict then list format
 """
 
 
-def request_players_info(number_of_players: int):
+def requesting_players_info(number_of_players: int):
     players = []
     for _ in range(number_of_players):
         player = insert_player_info()
@@ -106,41 +157,11 @@ def request_players_info(number_of_players: int):
     return players
 
 
-def store_player_instances(number_of_players: int):
-    players_info = request_players_info(number_of_players)
-
-    player_names = []
-    for player_info in players_info:
-        player_name = player_info[0]
-        player_names.append(player_name)
-
-    player_instances = []
-    for player_info in players_info:
-        player_instance = Player(*player_info)
-        player_instances.append(player_instance)
-
-    all_players_in_dict_format = {}
-    for name, instance in zip(player_names, player_instances):
-        all_players_in_dict_format[name] = instance
-
-    return all_players_in_dict_format
-
-
-def store_player_instances_in_list(number_of_players: int):
-    all_players_in_dict_format = store_player_instances(number_of_players)
-
-    all_players_in_list_format = []
-    for player_instance in all_players_in_dict_format.values():
-        all_players_in_list_format.append(player_instance)
-
-    return all_players_in_list_format
-
-
 """
 Below comes the pairing and annoucing of the matches for the first round 
 """
 
-#all_players_in_list_format = store_player_instances_in_list(tournament.players_number)
+#all_players_in_list_format = tournament.store_player_instances_in_list(tournament.players_number)
 
 
 def pairing_for_first_round(players: List[Player]):
@@ -155,10 +176,19 @@ def pairing_for_first_round(players: List[Player]):
     return pairing
 
 
+"""
+For the function to be reusable, I should take the list of players from the parameter. However, 
+the return value needs to be displayed in the VIEW. And I want to import as little things
+as possible (here, the list of players) from the MODEL to the VIEW (risk of circular imports). 
+Therefore, I think the best is to get the player list from the global scope. 
+In this way, when I call the function from the VIEW, i don't have to give it any argument. Another 
+advantage of this choice is that it keeps the VIEW dumb.  
+"""
 @beautify_player_representation
-def announce_pairing_for_first_round(players: List[Player]):
+def announce_pairing_for_first_round():
     # should this go directly in the view ? probably not, because there is some method overriding.
     # for a 16 player tournament, pairs[0] should meet pairs[8], pairs[1] should meet pairs[9] and so on.
+    players = all_players_in_list_format
     pairs = pairing_for_first_round(players)
 
     pairing_announcement = ["For the first round"]
@@ -451,3 +481,11 @@ def announce_ranking(players: List[Player]):
     return ranking_annoucement
 
 #rank_players_for_subsequent_round(all_players_in_list_format)
+
+
+if __name__ == "__main__":
+
+
+    # this should be done just after we instantiated all the players
+    Player.instances = {id(instance): instance.last_name for instance in Player.instances}
+    Tournament.list_of_players_instances = Player.instances

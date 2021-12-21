@@ -14,6 +14,35 @@ class Round:
     end_datetime: int = 0
 
 
+
+class Player:
+    # this class won't be wrapped by dataclass because we don't know how to create class
+    # variable with dataclasses.
+    # Here again, how should the date_of_birth be stored ?
+    # For each of those attrs, some formatting is necessary. Otherwise, it's unuseful info.
+
+    def __init__(self, last_name, first_name, date_of_birth, sex, ranking,
+                 opponents_faced=[], result_field=0):
+        self.last_name: str = last_name
+        self.first_name: str = first_name
+        self.date_of_birth: str = date_of_birth
+        self.sex: str = sex
+        self.ranking: int = ranking
+        self.opponents_faced: List[int] = opponents_faced
+        self.result_field: int = result_field
+        Player.instances.append(self)
+
+    def add(self, value):
+        self.opponents_faced.append(value)
+
+    def __str__(self):
+        return f"Player({self.last_name} | ranking: {self.ranking} | " \
+               f"result field: {self.result_field} | opponents: {self.opponents_faced} |||)"
+
+    def __repr__(self):
+        return self.__str__()
+
+
 @dataclass
 class Tournament:
     # for date, there are four possibilities - str, int(epoch date) or list of str or
@@ -31,30 +60,9 @@ class Tournament:
     time_control: str
     number_of_rounds: int = 4
     rounds: List[Round] = None
+    # It seems that I should the id of all the player instances in this list.
+    list_of_players_instances: List[Player] = None
 
-@dataclass
-class Player:
-    # Here again, how should the date_of_birth be stored ?
-    # For each of those attrs, some formatting is necessary. Otherwise, it's unuseful info.
-
-    last_name: str
-    first_name: str
-    date_of_birth: str
-    sex: str
-    ranking: int
-    opponents_faced: List[int] = field(default_factory=list)
-    result_field: int = 0
-
-    def add(self, value):
-        self.opponents_faced.append(value)
-
-
-    def __str__(self):
-        return f"Player({self.last_name} | ranking: {self.ranking} | " \
-               f"result field: {self.result_field} | opponents: {self.opponents_faced} |||)"
-
-    def __repr__(self):
-        return self.__str__()
 
 @dataclass
 class Match:
