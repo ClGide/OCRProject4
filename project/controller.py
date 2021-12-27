@@ -1,11 +1,17 @@
 from operator import attrgetter
 from typing import Dict, List
+import time, datetime
 
 from models import Player, Round, Tournament, Match
-from view import insert_player_info, tournament_info, insert_results
+from view import insert_player_info, insert_tournament_info, insert_results
 
 
 class CreatingPlayerStoringInTournament:
+    """
+    The number of players per tournament is inputted by the manager at the start. It is stored
+    as an attribute of the tournament instance. We use that number to request the info needed to
+    instantiate all the players. The func insert_player_info() is in the VIEW.
+    """
     def __init__(self, tournament: Tournament):
         self.tournament = tournament
         self.players_number = tournament.players_number
@@ -115,7 +121,7 @@ def announce_pairing_for_first_round():
 The following is a flow proposal : 
 1) program announces the matches for the first round.
 * here some time control takes place* 
-2) matches took place and the manager inserted the result (in the view).
+2) matches took place and the manager inserted the result (in the VIEW).
 3) program instantiates the matches and the corresponding round. 
 3) the program pairs the player with the swiss algorithm for subsequent rounds.
 
@@ -139,12 +145,26 @@ class CreatingRoundStoringInTournament:
         # round_number is an attribute of the Round instance we create, not the total number of rounds
         # in the tournament. The variable holding the later is self.number_of_rounds.
 
-        """Q: the inconvenience of dynamically creating an obj is that you recreate the
+        """Q: the inconvenience of dynamically creating an obj is that we recreate the
         obj each time you need it. Given that we store rounds in the Tournament instance,
         and maybe in other locations, I hope this recreation doesn't create bugs."""
 
         round_name = f"round{round_number}"
-        round_instance = Round(round_name, self.tournament)
+        # the rounds will last 20 min if time control is set to rapid, 5 min if time control is
+        # set to blitz, 3 min if time control is set to bullet.
+        round_start_datetime = time.time()
+        if self.tournament.time_control == "bullet":
+            round_end_datetime = round_start_datetime + 180
+        elif self.tournament.time_control == "blitz":
+            round_end_datetime = round_start_datetime + 300
+        elif self.tournament.time_control == "rapid":
+            round_end_datetime = round_start_datetime + 12000
+        else:
+            print("something went wrong with the instantiation of the tournament, "
+                  "namely it's time-control attribute")
+            raise ValueError
+        round_instance = Round(round_name, self.tournament, round_start_datetime, round_end_datetime)
+
         return round_name, round_instance
 
     def store_rounds(self):
@@ -163,11 +183,17 @@ class CreatingRoundStoringInTournament:
                 print("there are more rounds than originally declared")
                 raise IndexError
 
-        # storing the rounds in the tournament instance
+        # storing the dict containing the rounds in the tournament instance
         tournament.rounds = round_instances
 
 
 class CreatingMatchStoringInRound:
+    """
+    After using the pairing_for_first_round func to announce the matches to the manager, we are
+    reusing it to ask for the results of those matches. We use those results and other info already
+    inputted by the manager to instantiate the matches and store them in the tournament object.
+    the func insert_results() is in the VIEW.
+    """
     def __init__(self, round_number: int):
         self.round_number = round_number
         self.instantiate_and_store_matches_in_round()
@@ -215,7 +241,7 @@ class CreatingMatchStoringInRound:
 
 """
 below we update all the players attributes in accordance to the result of the round that just happened.
-Even I use procedural style, I think is clear enough to not be transferred into OOP style. 
+Even if I use procedural style, I think it is clear enough to not be rewritten into OOP style. 
 """
 
 
@@ -374,19 +400,23 @@ if __name__ == "__main__":
     We get the info from the VIEW.
     """
 
-    tournament = Tournament(*tournament_info())
+    tournament = Tournament(*insert_tournament_info())
 
     storing_player_instances_in_tournament = CreatingPlayerStoringInTournament(tournament)
 
-    announce_pairing_for_first_round()
+    print(announce_pairing_for_first_round())
 
     storing_round_instances_in_tournament = CreatingRoundStoringInTournament(tournament)
-
-    storing_match_instances_in_tournament = CreatingMatchStoringInRound(1)
+    if time.time() == tournament.rounds["round1"].end_datetime:
+        t = time.time()
+        storing_match_instances_in_tournament = CreatingMatchStoringInRound(1)
+        t1 = time.time()
+        print(abs(t-t1))
 
     matches_from_last_round = tournament.rounds["round1"].dict_of_matches
     update_all_players_attrs_after_round(matches_from_last_round)
 
+    print(f"those are the rounds as now shown :{tournament.rounds}")
     print(f"the idea is to be sure that the players attributes are updated correctly\n"
           f"this is player1:{tournament.list_of_players_instances[0]}"
           f"this is player2:{tournament.list_of_players_instances[1]}"
@@ -394,5 +424,4 @@ if __name__ == "__main__":
           f"this is player4:{tournament.list_of_players_instances[3]}")
 
     announce_pairing_for_subsequent_round()
-
     announce_ranking()

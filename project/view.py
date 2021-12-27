@@ -1,8 +1,13 @@
-def tournament_info():
+def insert_tournament_info():
     # with the input from this function, the controller will instantiate the tournament object
-    tournament_name: str = input("Please enter the tournament's name\n")
+    tournament_name: str = input("Hi, we hope our program will help you store all the data you need on your "
+                                 "chess tournaments. "
+                                 "Please follow the instructions carefully, remembering that the program "
+                                 "is case sensitive. Do not write unnecessary spaces.\n\n"
+                                 "Please enter the tournament's name\n")
     tournament_venue: str = input("Please enter the tournament's venue\n")
-    tournament_date: str = input("Please enter the tournament's date\n")
+    tournament_date: str = input("Enter the tournament's date. "
+                                 "Please, respect the expected format yyyy/mm/dd\n")
     tournament_players_number: int = input("How many players are in the tournament\n")
     tournament_description: str = input("you can enter some remarks about the tournament right here\n")
     tournament_time_control: str = input("Choose between the three time control type\n1.bullet\n2.blitz\n3.rapid\n")
@@ -14,8 +19,10 @@ def insert_player_info():
     # The number of times it is used is also set in the model module.
     player_surname: str = input("Please enter the player's surname\n")
     player_first_name: str = input("Please enter the player's first name\n")
-    player_birthday: str = input("Please enter the player's date of birth\n")
-    player_gender: str = input("Please enter the player's gender\n")
+    player_birthday: str = input("Enter the player's date of birth. "
+                                 "Please, respect the expected format yyyy/mm/dd\n")
+    player_gender: str = input("Please enter the player's gender "
+                               "(choose between 'men', 'women' or 'other')\n")
     player_rank: int = input("Please enter the player's rank\n")
     return player_surname, player_first_name, player_birthday, player_gender, player_rank
 

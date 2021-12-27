@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Dict
+import datetime
 
 
 @dataclass
@@ -7,12 +8,14 @@ class Round:
     # the two date times should be clearly epoch date
     name_field: str
     tournament: str  # the right type hint is Tournament, but I would get an error
+    start_datetime: float = 0
+    end_datetime: float = 0
     dict_of_matches: Dict[str, str] = None  # the third type hint is not str but Match
-    start_datetime: int = 0
-    end_datetime: int = 0
 
     def __str__(self):
-        return f'the {self.name_field} from {self.tournament}'
+        return f'the {self.name_field} from {self.tournament}. ' \
+               f'Started at {datetime.datetime.fromtimestamp(self.start_datetime)} ' \
+               f'Ended at {datetime.datetime.fromtimestamp(self.end_datetime)}'
 
     def __repr__(self):
         return self.__str__()
@@ -28,13 +31,14 @@ class Player:
                  opponents_faced=None, result_field=0):
         self.last_name: str = last_name
         self.first_name: str = first_name
-        self.date_of_birth: str = date_of_birth
+        self.date_of_birth: datetime.date = date_of_birth
         self.sex: str = sex
         self.ranking: int = ranking
         self.opponents_faced: List[str] = opponents_faced
         self.result_field: int = result_field
         self.avoid_mutable_default_value_issue()
         self.correct_attributes_type()
+        self.raise_error_for_incorrect_values()
 
     def add_opponent(self, value):
         self.opponents_faced.append(value)
@@ -44,6 +48,15 @@ class Player:
 
     def correct_attributes_type(self):
         self.ranking = int(self.ranking)
+
+        date_in_datetime_type = datetime.datetime.strptime(self.date_of_birth, "%Y/%m/%d")
+        self.date_of_birth = date_in_datetime_type
+        self.date_of_birth = self.date_of_birth.date()
+
+    def raise_error_for_incorrect_values(self):
+        if not (self.sex == "men" or self.sex == "women" or self.sex == "other"):
+            print("the sex of the player can be either men or women or other ")
+            raise ValueError
 
     def __str__(self):
         return f"Player({self.last_name}  ranking: {self.ranking} | " \
@@ -75,8 +88,27 @@ class Tournament:
 
     def correct_attributes_type(self):
         # the input is necessarily a string. Let's convert the attrs we want to integers.
+        date_in_datetime_type = datetime.datetime.strptime(self.date, "%Y/%m/%d")
+        self.date = date_in_datetime_type
+        self.date = self.date.date()
+
         self.players_number = int(self.players_number)
+
         self.number_of_rounds = int(self.number_of_rounds)
+
+    def raise_error_for_incorrect_values(self):
+        if not (self.time_control == "bullet" or self.time_control == "blitz" or self.time_control == "rapid"):
+            print("please, enter the name of one of the time control proposed")
+            raise ValueError
+
+        if not self.players_number % 2 == 0:
+            print("please, enter an even number of players. Otherwise, we cannot assure each player a match")
+            raise ValueError
+
+        if self.number_of_rounds > self.players_number:
+            print("in the swiss-system tournament, there shouldn't be more "
+                  "rounds than players.")
+            raise ValueError
 
     def __str__(self):
         return f'tournament {self.name} that took place in {self.venue}'
@@ -86,6 +118,7 @@ class Tournament:
 
     def __post_init__(self):
         self.correct_attributes_type()
+        self.raise_error_for_incorrect_values()
 
 
 @dataclass
