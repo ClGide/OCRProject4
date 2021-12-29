@@ -13,9 +13,11 @@ class Round:
     dict_of_matches: Dict[str, str] = None  # the third type hint is not str but Match
 
     def __str__(self):
+        start_datetime_beautified = datetime.datetime.fromtimestamp(self.start_datetime).replace(microsecond=0)
+        end_datetime_beautified = datetime.datetime.fromtimestamp(self.end_datetime).replace(microsecond=0)
         return f'the {self.name_field} from {self.tournament}. ' \
-               f'Started at {datetime.datetime.fromtimestamp(self.start_datetime)} ' \
-               f'Ended at {datetime.datetime.fromtimestamp(self.end_datetime)}'
+               f'Started at {start_datetime_beautified}. ' \
+               f'Ended at {end_datetime_beautified}'
 
     def __repr__(self):
         return self.__str__()

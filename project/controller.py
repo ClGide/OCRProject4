@@ -1,6 +1,8 @@
 from operator import attrgetter
 from typing import Dict, List
-import time, datetime
+import time
+import itertools
+
 
 from models import Player, Round, Tournament, Match
 from view import insert_player_info, insert_tournament_info, insert_results
@@ -12,6 +14,7 @@ class CreatingPlayerStoringInTournament:
     as an attribute of the tournament instance. We use that number to request the info needed to
     instantiate all the players. The func insert_player_info() is in the VIEW.
     """
+
     def __init__(self, tournament: Tournament):
         self.tournament = tournament
         self.players_number = tournament.players_number
@@ -89,7 +92,6 @@ def pairing_for_first_round(players: List[Player]):
     pairing = []
     for first_group_player, second_group_player in zip(first_group, second_group):
         pairing.append((first_group_player, second_group_player))
-
     return pairing
 
 
@@ -171,7 +173,7 @@ class CreatingRoundStoringInTournament:
         round_instances = {}
         for i in range(self.number_of_rounds):
             # appending the round instance to the dict round_instances
-            round_name, round_instance = self.instantiate_round(i+1)
+            round_name, round_instance = self.instantiate_round(i + 1)
             if round_instance not in round_instances.values():
                 round_instances[round_name] = round_instance
 
@@ -182,18 +184,18 @@ class CreatingRoundStoringInTournament:
             if len(round_instances) > tournament.number_of_rounds:
                 print("there are more rounds than originally declared")
                 raise IndexError
-
         # storing the dict containing the rounds in the tournament instance
         tournament.rounds = round_instances
 
 
-class CreatingMatchStoringInRound:
+class CreatingMatchStoringInRoundOne:
     """
     After using the pairing_for_first_round func to announce the matches to the manager, we are
     reusing it to ask for the results of those matches. We use those results and other info already
     inputted by the manager to instantiate the matches and store them in the tournament object.
     the func insert_results() is in the VIEW.
     """
+
     def __init__(self, round_number: int):
         self.round_number = round_number
         self.instantiate_and_store_matches_in_round()
@@ -222,6 +224,61 @@ class CreatingMatchStoringInRound:
             match_players_1 = player_pairs_for_first_round[i][0]
             match_players_2 = player_pairs_for_first_round[i][1]
             match_result = match_results[i]
+            match_instances_attributes.append((match_players_1, match_players_2, match_result, match_round))
+
+        return match_instances_attributes
+
+    def instantiate_and_store_matches_in_round(self):
+        """Q: should this func be refactored (does two things), but it also seems to be a short func"""
+        matches_attributes = self.collect_matches_info()
+        matches_instances = {}
+
+        for i in range(len(matches_attributes)):
+            match_name = f'match{i + 1}'
+            match_instance = Match(*matches_attributes[i])
+            matches_instances[match_name] = match_instance
+
+        tournament.rounds[f"round{self.round_number}"].dict_of_matches = matches_instances
+
+
+class CreatingMatchStoringInSubsequentRounds:
+
+    def __init__(self, round_number: int):
+        self.round_number = round_number
+        self.instantiate_and_store_matches_in_round()
+
+    @staticmethod
+    def request_match_results():
+        # the function returns a tuple of length 2, we only need the first item, the player pairs.
+        ranked_players = avoid_player_meeting_twice(tournament.list_of_players_instances)[0]
+
+        results = []
+        for i in range(0, len(ranked_players), 2):
+            # pl1 meets pl2, pl3 meets pl4 and so on in subsequent rounds. Therefore, pl1 from match1 is
+            # at index 0, pl1 from match 2 is at index 2 and so on.
+            player1 = ranked_players[i]
+            match_result = insert_results(player1.last_name)
+            results.append(match_result)
+
+        return results
+
+    def collect_matches_info(self):
+        ranked_players = avoid_player_meeting_twice(tournament.list_of_players_instances)[0]
+
+        match_results = self.request_match_results()
+
+        match_round = tournament.rounds[f"round{self.round_number}"]
+
+        match_instances_attributes = []
+
+        iterable_player_pairs = range(0, len(ranked_players), 2)
+        # for each two players there is one match, so if there are 10 players in the tournament, we have 5 matches.
+        iterable_match_result = range(len(ranked_players)//2)
+
+        for i, j in itertools.zip_longest(iterable_player_pairs, iterable_match_result):
+            match_players_1 = ranked_players[i]
+            match_players_2 = ranked_players[i+1]
+            match_result = match_results[j]
             match_instances_attributes.append((match_players_1, match_players_2, match_result, match_round))
 
         return match_instances_attributes
@@ -270,7 +327,6 @@ def change_players_result_field(player1: Player, player2: Player, match: Match):
 
 
 def update_player_faced_opponents_attr(match: Match):
-
     player1 = match.player1
     player1_opponent = match.player2
     player2 = match.player2
@@ -315,7 +371,8 @@ def rank_players_for_subsequent_round(players_ranked_in_previous_round: List[Pla
     for player in players_ranked_in_previous_round:
         player.ranking = -player.__getattribute__("ranking")
 
-    # Updating players' rank attribute in accordance to the ranking we just done
+    # Updating players' rank attribute in accordance to the ranking we just done.
+    # remember that index starts at 0 but rankings starts at 1.
     for player in players_sorted_by_points_then_rank:
         player.ranking = players_sorted_by_points_then_rank.index(player) + 1
 
@@ -334,6 +391,7 @@ def avoid_player_meeting_twice(players_ranked_in_previous_round: list):
             if i == 0:
                 continue
             if p[i - 1].last_name in p[i].opponents_faced:
+                print("there were some rearrangements in order to avoid duplicate")
                 p[i], p[(i + 2) % (len(p))] = p[(i + 2) % (len(p))], p[i]
 
     # checking the sorted list for unavoidable match duplicate
@@ -344,6 +402,8 @@ def avoid_player_meeting_twice(players_ranked_in_previous_round: list):
             unavoidable_duplicate = True
             break
     paired_players = p
+    print(f"this is the var paired_players as getting out of avoid_player_meeting_twice:"
+          f" {paired_players}")
     return paired_players, unavoidable_duplicate
 
 
@@ -358,7 +418,7 @@ def announce_pairing_for_subsequent_round():
         if i == 0 or i == 1 or i == 2:
             continue
         if i >= 3 and (i % 2) != 0:
-            pairing_announcement.append(f'{p[i-1]} will meet {p[i]}')
+            pairing_announcement.append(f'{p[i - 1]} will meet {p[i]}')
 
     if unavoidable_duplicate is True:
         pairing_announcement.append("given the number of matches and players in tournament, "
@@ -394,34 +454,57 @@ def announce_ranking():
     return ranking_announcement
 
 
+def time_control(tournament):
+    # this function simulates the time each round takes depending on the time control chose
+    # by the manager when instantiating the tournament.
+    if tournament.time_control == "bullet":
+        return time.sleep(180)
+    elif tournament.time_control == "blitz":
+        return time.sleep(300)
+    elif tournament.time_control == "rapid":
+        return time.sleep(12000)
+    else:
+        print("something went wrong with the instantiation of the tournament, "
+              "namely it's time-control attribute")
+        raise ValueError
+
+
 if __name__ == "__main__":
     """ 
     For each new tournament, the script will be run again. Therefore, we know we only need one tournament instance. 
     We get the info from the VIEW.
     """
 
+    # instantiating the tournament
     tournament = Tournament(*insert_tournament_info())
-
     storing_player_instances_in_tournament = CreatingPlayerStoringInTournament(tournament)
 
-    print(announce_pairing_for_first_round())
-
+    # setting up the first round
+    announce_pairing_for_first_round()
     storing_round_instances_in_tournament = CreatingRoundStoringInTournament(tournament)
-    if time.time() == tournament.rounds["round1"].end_datetime:
-        t = time.time()
-        storing_match_instances_in_tournament = CreatingMatchStoringInRound(1)
-        t1 = time.time()
-        print(abs(t-t1))
-
+    # the first round is taking place
+    time_control(tournament)
+    # the first round happened
+    storing_match_instances_in_tournament = CreatingMatchStoringInRoundOne(1)
     matches_from_last_round = tournament.rounds["round1"].dict_of_matches
     update_all_players_attrs_after_round(matches_from_last_round)
 
-    print(f"those are the rounds as now shown :{tournament.rounds}")
+    for i in range(1, tournament.number_of_rounds):
+        # the algorithm used for the first round and for the subsequent rounds are different. Theferefore,
+        # the first round matches are instantiated out of the loop. The range built-in function starts at
+        # zero but the first round is round1, that's why the arg passed to the CreatingMatchStoringInRoundOne
+        # class is i+1.
+        announce_pairing_for_subsequent_round()
+        time_control(tournament)
+
+        storing_more_match_instances_in_tournament = CreatingMatchStoringInSubsequentRounds(i + 1)
+        matches_from_last_round = tournament.rounds[f"round{i + 1}"].dict_of_matches
+        update_all_players_attrs_after_round(matches_from_last_round)
+
     print(f"the idea is to be sure that the players attributes are updated correctly\n"
-          f"this is player1:{tournament.list_of_players_instances[0]}"
-          f"this is player2:{tournament.list_of_players_instances[1]}"
-          f"this is player3:{tournament.list_of_players_instances[2]}"
+          f"this is player1:{tournament.list_of_players_instances[0]}\n"
+          f"this is player2:{tournament.list_of_players_instances[1]}\n"
+          f"this is player3:{tournament.list_of_players_instances[2]}\n"
           f"this is player4:{tournament.list_of_players_instances[3]}")
 
-    announce_pairing_for_subsequent_round()
     announce_ranking()
