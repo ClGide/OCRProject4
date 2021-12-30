@@ -12,6 +12,14 @@ class Round:
     end_datetime: float = 0
     dict_of_matches: Dict[str, str] = None  # the third type hint is not str but Match
 
+    def serialize_round(self):
+        serialize_round = {"name_field": self.name_field,
+                           "tournament": self.tournament,
+                           "start_datetime": str(self.start_datetime),
+                           "end_datetime": str(self.end_datetime)
+                           }
+        return serialize_round
+
     def __str__(self):
         start_datetime_beautified = datetime.datetime.fromtimestamp(self.start_datetime).replace(microsecond=0)
         end_datetime_beautified = datetime.datetime.fromtimestamp(self.end_datetime).replace(microsecond=0)
@@ -59,6 +67,16 @@ class Player:
         if not (self.sex == "men" or self.sex == "women" or self.sex == "other"):
             print("the sex of the player can be either men or women or other ")
             raise ValueError
+
+    def serialized_player(self):
+        serialized_player = {"last_name": self.last_name,
+                             "first_name": self.first_name,
+                             "date_of_birth": str(self.date_of_birth),
+                             "sex": self.sex,
+                             "ranking": str(self.ranking),
+                             "result_field": str(self.result_field)}
+
+        return serialized_player
 
     def __str__(self):
         return f"Player({self.last_name}  ranking: {self.ranking} | " \
@@ -146,3 +164,9 @@ class Match:
             raise TypeError
         results = [(self.player1, points_player1), (self.player2, points_player2)]
         return results
+
+    def serialize_match(self):
+        serialized_match = {"player1": self.player1.last_name,
+                            "player2": self.player2.last_name,
+                            "result": self.result}
+        return serialized_match

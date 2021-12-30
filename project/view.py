@@ -14,6 +14,7 @@ def insert_tournament_info():
     tournament_round_numbers: str = input("How many rounds should they be in the tournament ?\n")
     return tournament_name, tournament_venue, tournament_date, tournament_players_number, tournament_description, tournament_time_control, tournament_round_numbers
 
+
 def insert_player_info():
     # this functions immediately returns it's value in the model module.
     # The number of times it is used is also set in the model module.
@@ -27,19 +28,44 @@ def insert_player_info():
     return player_surname, player_first_name, player_birthday, player_gender, player_rank
 
 
-def insert_results(player1:str):
+def insert_results(player1: str):
     # No computation should be done here. All we need to do is take result for each mach, store it and
     # transfer it in the controller.
     match_result = input(f"What was the result of the match ? Enter 'W' if {player1} winned, "
-                   "'L' if he lost and 'D  if the match ended in a draw \n")
+                         "'L' if he lost and 'D  if the match ended in a draw \n")
     return match_result
 
 
 def modify_tournament_description():
     pass
 
+
+def override_ranking():
+    pass
+
+
+def what_request():
+    request = input("Do you need something from the database ? just enter the integer corresponding to your request: "
+                    "1. a list with all the players from a tournament ranked alphabetically\n"
+                    "2. a list with the ranking of all the players from a tournament\n"
+                    "3. a list with the players from all the tournaments ranked alphabetically\n"
+                    "4. a list with the ranking of all the players from all tournaments\n"
+                    "5. a list with all the tournaments\n"
+                    "6. a list of all the rounds in a tournament\n"
+                    "7. a list of all the matches in a tournament\n"
+                    "8. I don't need anything for the moment")
+    return request
+
+
+def requesting_tournament_name():
+    which_tournament = input("which tournament are you refering to ?")
+    return which_tournament
+
+
+
 # if I import it before, I'll run into circular importing
 from controller import announce_pairing_for_first_round
+
 
 def display_first_round_matches():
     pairing_announcement = announce_pairing_for_first_round()
