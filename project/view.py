@@ -62,6 +62,19 @@ def requesting_tournament_name():
     return which_tournament
 
 
+def what_table_to_save():
+    manager_wants_to_save = input("Do you want to save some data ? Please enter the integer corresponding to your need:\n"
+                                  "1. I need to save a table with all the tournament info\n"
+                                  "2. I need to save a table with all the players info\n"
+                                  "3. I need to save both tables\n"
+                                  "4. I don't need to save anything for the moment\n")
+    return manager_wants_to_save
+
+
+def which_player_table():
+    which_player = input("please, enter the player table name you are requesting")
+    return which_player
+
 
 # if I import it before, I'll run into circular importing
 from controller import announce_pairing_for_first_round
@@ -70,3 +83,4 @@ from controller import announce_pairing_for_first_round
 def display_first_round_matches():
     pairing_announcement = announce_pairing_for_first_round()
     print(pairing_announcement)
+

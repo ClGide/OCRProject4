@@ -1,6 +1,7 @@
+import datetime
+import json
 from dataclasses import dataclass
 from typing import List, Dict
-import datetime
 
 
 @dataclass
@@ -12,23 +13,34 @@ class Round:
     end_datetime: float = 0
     dict_of_matches: Dict[str, str] = None  # the third type hint is not str but Match
 
+    def serialize_matches(self):
+        serialized_matches = {}
+        matches = list(self.dict_of_matches.values())
+        for i in range(len(matches)):
+            serialized_matches[str(i+1)] = matches[i].serialize_match()
+        return serialized_matches
+
     def serialize_round(self):
-        serialize_round = {"name_field": self.name_field,
-                           "tournament": self.tournament,
-                           "start_datetime": str(self.start_datetime),
-                           "end_datetime": str(self.end_datetime)
-                           }
-        return serialize_round
+        serialized_matches = self.serialize_matches()
+        serialized_round = {
+            "tournament": self.tournament.name,
+            "start_datetime": str(self.start_datetime_beautified),
+            "end_datetime": str(self.end_datetime_beautified),
+            "matches": serialized_matches}
+        return serialized_round
 
     def __str__(self):
-        start_datetime_beautified = datetime.datetime.fromtimestamp(self.start_datetime).replace(microsecond=0)
-        end_datetime_beautified = datetime.datetime.fromtimestamp(self.end_datetime).replace(microsecond=0)
         return f'the {self.name_field} from {self.tournament}. ' \
-               f'Started at {start_datetime_beautified}. ' \
-               f'Ended at {end_datetime_beautified}'
+               f'Started at {self.start_datetime_beautified}. ' \
+               f'Ended at {self.end_datetime_beautified}'
 
     def __repr__(self):
         return self.__str__()
+
+    def __post_init__(self):
+        # converting epoch time start and end datetime to user-friendly datetime.
+        self.start_datetime_beautified = datetime.datetime.fromtimestamp(self.start_datetime).replace(microsecond=0)
+        self.end_datetime_beautified = datetime.datetime.fromtimestamp(self.end_datetime).replace(microsecond=0)
 
 
 class Player:
@@ -45,7 +57,7 @@ class Player:
         self.sex: str = sex
         self.ranking: int = ranking
         self.opponents_faced: List[str] = opponents_faced
-        self.result_field: int = result_field
+        self.result_field: float = result_field
         self.avoid_mutable_default_value_issue()
         self.correct_attributes_type()
         self.raise_error_for_incorrect_values()
@@ -64,7 +76,8 @@ class Player:
         self.date_of_birth = self.date_of_birth.date()
 
     def raise_error_for_incorrect_values(self):
-        if not (self.sex == "men" or self.sex == "women" or self.sex == "other"):
+        if not (self.sex == "men" or self.sex == "women" or self.sex == "other" or
+                self.sex == "MEN" or self.sex == "WOMEN" or self.sex == "OTHER"):
             print("the sex of the player can be either men or women or other ")
             raise ValueError
 
@@ -74,6 +87,7 @@ class Player:
                              "date_of_birth": str(self.date_of_birth),
                              "sex": self.sex,
                              "ranking": str(self.ranking),
+                             "opponents_faced": json.dumps(self.opponents_faced),
                              "result_field": str(self.result_field)}
 
         return serialized_player
@@ -117,7 +131,8 @@ class Tournament:
         self.number_of_rounds = int(self.number_of_rounds)
 
     def raise_error_for_incorrect_values(self):
-        if not (self.time_control == "bullet" or self.time_control == "blitz" or self.time_control == "rapid"):
+        if not (self.time_control == "bullet" or self.time_control == "blitz" or self.time_control == "rapid" or
+                self.time_control == "BULLET" or self.time_control == "BLITZ" or self.time_control == "RAPID"):
             print("please, enter the name of one of the time control proposed")
             raise ValueError
 
@@ -129,6 +144,26 @@ class Tournament:
             print("in the swiss-system tournament, there shouldn't be more "
                   "rounds than players.")
             raise ValueError
+
+    def serialize_rounds(self):
+        serialized_rounds = {}
+        for round in self.rounds.values():
+            serialized_round = round.serialize_round()
+            serialized_rounds[round.name_field] = serialized_round
+        return serialized_rounds
+
+    def serialize_tournament(self):
+        serialized_rounds = self.serialize_rounds()
+        serialized_tournament = {
+            "venue": self.venue,
+            "date": str(self.date),
+            "players number": str(self.players_number),
+            "description": self.description,
+            "time control": self.time_control,
+            "number of rounds": str(self.number_of_rounds),
+            "rounds": serialized_rounds
+        }
+        return serialized_tournament
 
     def __str__(self):
         return f'tournament {self.name} that took place in {self.venue}'
@@ -150,13 +185,13 @@ class Match:
 
     def convert_match_result_into_points(self):
         # We take the needed letter from the view and we return the results in the correct format
-        if self.result == "W":
+        if self.result == "W" or self.result == "w":
             points_player1 = 1
             points_player2 = 0
-        elif self.result == "L":
+        elif self.result == "L" or self.result == "l":
             points_player1 = 0
             points_player2 = 1
-        elif self.result == "D":
+        elif self.result == "D" or self.result == "d":
             points_player1 = 0.5
             points_player2 = 0.5
         else:
@@ -168,5 +203,6 @@ class Match:
     def serialize_match(self):
         serialized_match = {"player1": self.player1.last_name,
                             "player2": self.player2.last_name,
-                            "result": self.result}
+                            "result": self.result,
+                            "round": self.round.name_field}
         return serialized_match

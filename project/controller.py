@@ -1,14 +1,14 @@
+import itertools
+import json
+import time
 from operator import attrgetter
 from typing import Dict, List
-import time
-import itertools
-from tinydb import TinyDB, Query
+
+from tinydb import TinyDB
 
 from models import Player, Round, Tournament, Match
-from view import insert_player_info, insert_tournament_info, insert_results, what_request, requesting_tournament_name
-
-# I don't know if I could name that a constant, but it seems to me to be the best place to place it.
-db = TinyDB('db.json')
+from view import insert_player_info, insert_results, what_request, requesting_tournament_name, \
+    what_table_to_save, which_player_table, insert_tournament_info
 
 
 class CreatingPlayerStoringInTournament:
@@ -130,7 +130,7 @@ The following is a flow proposal :
 3) program instantiates the matches and the corresponding round. 
 3) the program pairs the player with the swiss algorithm for subsequent rounds.
 
-TODO: We also need to give each round a start and end datetime that will be set depending on two criteria. 
+We also need to give each round a start and end datetime that will be set depending on two criteria. 
 First, the number of expected rounds AND second, the time_control property of the corresponding Tournament instance.
 EXTRA: For more realism, we can even program a 1-min break between rounds.
 
@@ -158,11 +158,11 @@ class CreatingRoundStoringInTournament:
         # the rounds will last 20 min if time control is set to rapid, 5 min if time control is
         # set to blitz, 3 min if time control is set to bullet.
         round_start_datetime = time.time()
-        if self.tournament.time_control == "bullet":
+        if self.tournament.time_control == "bullet" or self.tournament.time_control == "BULLET":
             round_end_datetime = round_start_datetime + 180
-        elif self.tournament.time_control == "blitz":
+        elif self.tournament.time_control == "blitz" or self.tournament.time_control == "BLITZ":
             round_end_datetime = round_start_datetime + 300
-        elif self.tournament.time_control == "rapid":
+        elif self.tournament.time_control == "rapid" or self.tournament.time_control == "RAPID":
             round_end_datetime = round_start_datetime + 12000
         else:
             print("something went wrong with the instantiation of the tournament, "
@@ -253,7 +253,7 @@ class CreatingMatchStoringInSubsequentRounds:
     @staticmethod
     def request_match_results():
         # the function returns a tuple of length 2, we only need the first item, the player pairs.
-        ranked_players = avoid_player_meeting_twice(tournament.list_of_players_instances)[0]
+        ranked_players = avoid_player_meeting_twice(tournament.list_of_players_instances)
 
         results = []
         for i in range(0, len(ranked_players), 2):
@@ -266,7 +266,7 @@ class CreatingMatchStoringInSubsequentRounds:
         return results
 
     def collect_matches_info(self):
-        ranked_players = avoid_player_meeting_twice(tournament.list_of_players_instances)[0]
+        ranked_players = avoid_player_meeting_twice(tournament.list_of_players_instances)
 
         match_results = self.request_match_results()
 
@@ -385,7 +385,6 @@ def rank_players_for_subsequent_round(players_ranked_in_previous_round: List[Pla
 def avoid_player_meeting_twice(players_ranked_in_previous_round: list):
     players_ranked_for_subsequent_round = rank_players_for_subsequent_round(players_ranked_in_previous_round)
     p = players_ranked_for_subsequent_round
-    unavoidable_duplicate = False
 
     # rearranging the list in order to avoid duplicate. The logic is the following. If two players are
     # about to meet, we need to swap one of the players w/ another one located two indexes further in the list.
@@ -397,22 +396,12 @@ def avoid_player_meeting_twice(players_ranked_in_previous_round: list):
                 print("there were some rearrangements in order to avoid duplicate")
                 p[i], p[(i + 2) % (len(p))] = p[(i + 2) % (len(p))], p[i]
 
-    # checking the sorted list for unavoidable match duplicate
-    for i in range(len(p)):
-        if i == 0:
-            continue
-        if p[i - 1].last_name in p[i].opponents_faced:
-            unavoidable_duplicate = True
-            break
     paired_players = p
-    print(f"this is the var paired_players as getting out of avoid_player_meeting_twice:"
-          f" {paired_players}")
-    return paired_players, unavoidable_duplicate
-
+    return paired_players
 
 @beautify_player_representation
 def announce_pairing_for_subsequent_round():
-    paired_players, unavoidable_duplicate = avoid_player_meeting_twice(tournament.list_of_players_instances)
+    paired_players = avoid_player_meeting_twice(tournament.list_of_players_instances)
     p = paired_players
 
     pairing_announcement = [f'{p[0]} will meet {p[1]}']
@@ -423,10 +412,7 @@ def announce_pairing_for_subsequent_round():
         if i >= 3 and (i % 2) != 0:
             pairing_announcement.append(f'{p[i - 1]} will meet {p[i]}')
 
-    if unavoidable_duplicate is True:
-        pairing_announcement.append("given the number of matches and players in tournament, "
-                                    "it is unavoidable that players meet twice")
-
+    print(pairing_announcement)
     return pairing_announcement
 
 
@@ -460,45 +446,54 @@ def announce_ranking():
 def time_control(tournament):
     # this function simulates the time each round takes depending on the time control chose
     # by the manager when instantiating the tournament.
-    if tournament.time_control == "bullet":
-        return time.sleep(180)
-    elif tournament.time_control == "blitz":
+    if tournament.time_control == "bullet" or tournament.time_control == "BULLET":
+        return time.sleep(10)
+    elif tournament.time_control == "blitz" or tournament.time_control == "BLITZ":
         return time.sleep(300)
-    elif tournament.time_control == "rapid":
+    elif tournament.time_control == "rapid" or tournament.time_control == "RAPID":
         return time.sleep(12000)
     else:
         print("something went wrong with the instantiation of the tournament, "
               "namely it's time-control attribute")
         raise ValueError
 
+db = TinyDB('db.json', indent=4, separators=(',', ': '))
 
 class SaveDataInDB:
-    def __init__(self, tournament):
+    def __init__(self, tournament: Tournament):
+        self.what_table_to_save = what_table_to_save()
         self.tournament = tournament
-        self.dict_of_players = self.get_dict_of_players()
-        self.save_all_players_from_tournament()
 
-    @staticmethod
-    def get_dict_of_players():
-        dict_of_players = {}
-        for player in tournament.list_of_players_instances:
-            dict_of_players[player.last_name] = player
-        return dict_of_players
+        if self.what_table_to_save == "1":
+            self.save_the_tournament(self.tournament.name)
+        elif self.what_table_to_save == "2":
+            self.save_players_from_tournament()
+        elif self.what_table_to_save == "3":
+            self.save_the_tournament(self.tournament.name)
+            self.save_players_from_tournament()
+        elif self.what_table_to_save == "4":
+            pass
+        else:
+            print("if you need something, please only enter the integer corresponding "
+                  "to your need")
+            raise ValueError
 
-    @staticmethod
-    def save_all_players_from_tournament():
+    def save_players_from_tournament(self):
         serialized_players = []
-        for player in tournament.list_of_players_instances:
+        for player in self.tournament.list_of_players_instances:
             serialized_player = player.serialized_player()
             serialized_players.append(serialized_player)
 
-        players_table = db.table('players')
+        player_table_name = f"players_competing_in_{self.tournament.name}"
+        players_table = db.table(player_table_name)
         players_table.truncate()
         players_table.insert_multiple(serialized_players)
 
-    @staticmethod
-    def save_the_tournament(self):
-        pass
+    def save_the_tournament(self, tournament_table_name: str):
+        serialized_tournament = self.tournament.serialize_tournament()
+        tournament_table = db.table(tournament_table_name)
+        tournament_table.truncate()
+        tournament_table.insert(serialized_tournament)
 
 
 class RequestsMenu:
@@ -517,26 +512,27 @@ class RequestsMenu:
             return which_tournament
 
     def search_in_database(self, which_tournament):
-        if self.request == 1:
+        if self.request == "1":
             self.players_in_a_tournament_ranked_alphabetically(which_tournament)
-        elif self.request == 2:
+        elif self.request == "2":
             self.players_ranking_from_a_tournament(which_tournament)
-        elif self.request == 3:
+        elif self.request == "3":
             self.all_tournaments_players_ranked_alphabetically()
-        elif self.request == 4:
+        elif self.request == "4":
             self.all_tournaments_players_ranking()
-        elif self.request == 5:
+        elif self.request == "5":
             self.all_tournaments()
-        elif self.request == 6:
+        elif self.request == "6":
             self.all_rounds_in_a_tournament(which_tournament)
-        elif self.request == 7:
+        elif self.request == "7":
             self.all_matches_in_a_tournament(which_tournament)
 
     @staticmethod
     def players_in_a_tournament_ranked_alphabetically(which_tournament):
         if which_tournament == tournament.name:
-            return tournament.list_of_players_instances
+            return sorted(tournament.list_of_players_instances, key=lambda x: x.last_name)
         else:
+            player_table_name = which_player_table()
             print("to be completed")
             if False:
                 "We didn't find the tournament you are referring to, make sure the name of the " \
@@ -546,8 +542,9 @@ class RequestsMenu:
     @staticmethod
     def players_ranking_from_a_tournament(which_tournament):
         if which_tournament == tournament.name:
-            return tournament.list_of_players_instances
+            return sorted(tournament.list_of_players_instances, key=lambda x: x.ranking)
         else:
+            which_player = which_player_table()
             print("to be completed")
             if False:
                 "We didn't find the tournament you are referring to, make sure the name of the " \
@@ -596,11 +593,14 @@ if __name__ == "__main__":
     We get the info from the VIEW.
     """
 
+
     # instantiating the tournament
     tournament = Tournament(*insert_tournament_info())
+
+
     storing_player_instances_in_tournament = CreatingPlayerStoringInTournament(tournament)
 
-    """    # setting up the first round
+    # setting up the first round
     announce_pairing_for_first_round()
     storing_round_instances_in_tournament = CreatingRoundStoringInTournament(tournament)
 
@@ -612,8 +612,6 @@ if __name__ == "__main__":
     matches_from_last_round = tournament.rounds["Round 1"].dict_of_matches
     update_all_players_attrs_after_round(matches_from_last_round)
 
-    # here there should be a call to a func allowing the manager to save, transform or load data to the DB
-
     for i in range(1, tournament.number_of_rounds):
         # the algorithm used for the first round and for the subsequent rounds are different. Therefore,
         # the first round matches are instantiated out of the loop. The range built-in function starts at
@@ -621,12 +619,16 @@ if __name__ == "__main__":
         # class is i+1.
 
         # here there should be a call to a func allowing the manager to save, transform or load data to the DB
+        possibly_saving_data = SaveDataInDB(tournament)
+
         announce_pairing_for_subsequent_round()
         time_control(tournament)
 
         storing_more_match_instances_in_tournament = CreatingMatchStoringInSubsequentRounds(i + 1)
         matches_from_last_round = tournament.rounds[f"Round {i + 1}"].dict_of_matches
         update_all_players_attrs_after_round(matches_from_last_round)
+
+    possibly_saving_data = SaveDataInDB(tournament)
 
     print(f"the idea is to be sure that the players attributes are updated correctly\n"
           f"this is player1:{tournament.list_of_players_instances[0]}\n"
@@ -635,6 +637,5 @@ if __name__ == "__main__":
           f"this is player4:{tournament.list_of_players_instances[3]}")
 
     announce_ranking()
-    """
 
-    testing_new_class = SaveDataInDB(tournament)
+
