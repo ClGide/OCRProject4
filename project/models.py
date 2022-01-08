@@ -78,8 +78,7 @@ class Player:
     def raise_error_for_incorrect_values(self):
         if not (self.sex == "men" or self.sex == "women" or self.sex == "other" or
                 self.sex == "MEN" or self.sex == "WOMEN" or self.sex == "OTHER"):
-            print("the sex of the player can be either men or women or other ")
-            raise ValueError
+            raise ValueError("the sex of the player can be either men or women or other ")
 
     def serialized_player(self):
         serialized_player = {"last_name": self.last_name,
@@ -122,7 +121,10 @@ class Tournament:
 
     def correct_attributes_type(self):
         # the input is necessarily a string. Let's convert the attrs we want to integers.
-        date_in_datetime_type = datetime.datetime.strptime(self.date, "%Y/%m/%d")
+        try:
+            date_in_datetime_type = datetime.datetime.strptime(self.date, "%Y/%m/%d")
+        except ValueError:
+            date_in_datetime_type = datetime.datetime.strptime(self.date, "%Y-%m-%d")
         self.date = date_in_datetime_type
         self.date = self.date.date()
 
@@ -133,17 +135,14 @@ class Tournament:
     def raise_error_for_incorrect_values(self):
         if not (self.time_control == "bullet" or self.time_control == "blitz" or self.time_control == "rapid" or
                 self.time_control == "BULLET" or self.time_control == "BLITZ" or self.time_control == "RAPID"):
-            print("please, enter the name of one of the time control proposed")
-            raise ValueError
+            raise ValueError("please, enter the name of one of the time control proposed")
 
         if not self.players_number % 2 == 0:
-            print("please, enter an even number of players. Otherwise, we cannot assure each player a match")
-            raise ValueError
+            raise ValueError("please, enter an even number of players. Otherwise, we cannot assure each player a match")
 
         if self.number_of_rounds > self.players_number:
-            print("in the swiss-system tournament, there shouldn't be more "
+            raise ValueError("in the swiss-system tournament, there shouldn't be more "
                   "rounds than players.")
-            raise ValueError
 
     def serialize_rounds(self):
         serialized_rounds = {}
@@ -154,6 +153,7 @@ class Tournament:
 
     def serialize_tournament(self):
         serialized_rounds = self.serialize_rounds()
+        print(f"this is serialized_rounds in Tournament: {serialized_rounds}")
         serialized_tournament = {
             "venue": self.venue,
             "date": str(self.date),
@@ -195,8 +195,7 @@ class Match:
             points_player1 = 0.5
             points_player2 = 0.5
         else:
-            print('please enter "W", "L" or "D"')
-            raise TypeError
+            raise TypeError('please enter "W", "L" or "D"')
         results = [(self.player1, points_player1), (self.player2, points_player2)]
         return results
 

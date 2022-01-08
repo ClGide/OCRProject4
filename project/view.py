@@ -45,7 +45,7 @@ def override_ranking():
 
 
 def what_request():
-    request = input("Do you need something from the database ? just enter the integer corresponding to your request: "
+    request = input("Do you need something from the database ? just enter the integer corresponding to your request:\n"
                     "1. a list with all the players from a tournament ranked alphabetically\n"
                     "2. a list with the ranking of all the players from a tournament\n"
                     "3. a list with the players from all the tournaments ranked alphabetically\n"
@@ -53,7 +53,7 @@ def what_request():
                     "5. a list with all the tournaments\n"
                     "6. a list of all the rounds in a tournament\n"
                     "7. a list of all the matches in a tournament\n"
-                    "8. I don't need anything for the moment")
+                    "8. I don't need anything for the moment\n")
     return request
 
 
@@ -62,7 +62,7 @@ def requesting_tournament_name():
     return which_tournament
 
 
-def what_table_to_save():
+def requesting_table_to_save_first_round():
     manager_wants_to_save = input("Do you want to save some data ? Please enter the integer corresponding to your need:\n"
                                   "1. I need to save a table with all the tournament info\n"
                                   "2. I need to save a table with all the players info\n"
@@ -71,7 +71,14 @@ def what_table_to_save():
     return manager_wants_to_save
 
 
-def which_player_table():
+def requesting_table_to_save_subsequent_round():
+    manager_wants_to_save = input("Do you want to save some data ? Please enter the integer corresponding to your need:\n"
+                                  "1. I need to save a table with all the players info\n"
+                                  "2. I don't need to save anything for the moment\n")
+    return manager_wants_to_save
+
+
+def requesting_player_table_name():
     which_player = input("please, enter the player table name you are requesting")
     return which_player
 

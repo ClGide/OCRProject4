@@ -1,14 +1,18 @@
+import datetime
 import itertools
 import json
 import time
+import calendar
 from operator import attrgetter
 from typing import Dict, List
 
-from tinydb import TinyDB
+from tinydb import TinyDB, Query
 
 from models import Player, Round, Tournament, Match
-from view import insert_player_info, insert_results, what_request, requesting_tournament_name, \
-    what_table_to_save, which_player_table, insert_tournament_info
+from view import insert_player_info, insert_tournament_info, insert_results, what_request, requesting_tournament_name, \
+    requesting_table_to_save_first_round, requesting_player_table_name, requesting_table_to_save_subsequent_round
+
+SUBSEQUENT_ROUNDS = False
 
 
 class CreatingPlayerStoringInTournament:
@@ -165,9 +169,8 @@ class CreatingRoundStoringInTournament:
         elif self.tournament.time_control == "rapid" or self.tournament.time_control == "RAPID":
             round_end_datetime = round_start_datetime + 12000
         else:
-            print("something went wrong with the instantiation of the tournament, "
-                  "namely it's time-control attribute")
-            raise ValueError
+            raise ValueError("something went wrong with the instantiation of the tournament, "
+                             "namely it's time-control attribute")
         round_instance = Round(round_name, self.tournament, round_start_datetime, round_end_datetime)
 
         return round_name, round_instance
@@ -182,11 +185,9 @@ class CreatingRoundStoringInTournament:
 
             # catching eventual errors in the process
             else:
-                print("this round have already been instantiated and stored")
-                raise ValueError
+                raise ValueError("this round have already been instantiated and stored")
             if len(round_instances) > tournament.number_of_rounds:
-                print("there are more rounds than originally declared")
-                raise IndexError
+                raise IndexError("there are more rounds than originally declared")
         # storing the dict containing the rounds in the tournament instance
         tournament.rounds = round_instances
 
@@ -313,8 +314,7 @@ def check_match_result(player1: Player, player2: Player, match: Match):
     player1_from_results = results[0][0]
     player2_from_results = results[1][0]
     if player1_from_results != player1 or player2_from_results != player2:
-        print("the players you entered do not match the players from the match")
-        raise TypeError
+        raise TypeError("the players you entered do not match the players from the match")
 
     return results
 
@@ -399,6 +399,7 @@ def avoid_player_meeting_twice(players_ranked_in_previous_round: list):
     paired_players = p
     return paired_players
 
+
 @beautify_player_representation
 def announce_pairing_for_subsequent_round():
     paired_players = avoid_player_meeting_twice(tournament.list_of_players_instances)
@@ -453,30 +454,44 @@ def time_control(tournament):
     elif tournament.time_control == "rapid" or tournament.time_control == "RAPID":
         return time.sleep(12000)
     else:
-        print("something went wrong with the instantiation of the tournament, "
-              "namely it's time-control attribute")
-        raise ValueError
+        raise ValueError("something went wrong with the instantiation of the tournament, "
+                         "namely it's time-control attribute")
+
 
 db = TinyDB('db.json', indent=4, separators=(',', ': '))
 
+
 class SaveDataInDB:
     def __init__(self, tournament: Tournament):
-        self.what_table_to_save = what_table_to_save()
+        self.what_table_to_save_first_round = requesting_table_to_save_first_round()
+        self.what_table_to_save_subsequent_round = requesting_table_to_save_subsequent_round()
         self.tournament = tournament
 
-        if self.what_table_to_save == "1":
-            self.save_the_tournament(self.tournament.name)
-        elif self.what_table_to_save == "2":
-            self.save_players_from_tournament()
-        elif self.what_table_to_save == "3":
-            self.save_the_tournament(self.tournament.name)
-            self.save_players_from_tournament()
-        elif self.what_table_to_save == "4":
-            pass
+        if SUBSEQUENT_ROUNDS == False:
+            if self.what_table_to_save_subsequent_round == "1":
+                self.what_table_to_save_subsequent_round()
+            elif self.what_table_to_save_subsequent_round == "2":
+                self.what_table_to_save_subsequent_round()
+            else:
+                raise ValueError("if you need something, please only enter the integer corresponding "
+                                 "to your need")
+
+        elif SUBSEQUENT_ROUNDS == True:
+            if self.what_table_to_save_first_round == "1":
+                self.save_the_tournament(self.tournament.name)
+            elif self.what_table_to_save_first_round == "2":
+                self.save_players_from_tournament()
+            elif self.what_table_to_save_first_round == "3":
+                self.save_the_tournament(self.tournament.name)
+                self.save_players_from_tournament()
+            elif self.what_table_to_save_first_round == "4":
+                pass
+            else:
+                raise ValueError("if you need something, please only enter the integer corresponding "
+                                 "to your need")
+
         else:
-            print("if you need something, please only enter the integer corresponding "
-                  "to your need")
-            raise ValueError
+            raise ValueError("Something went wrong with the SUBSEQUENT_ROUNDS var")
 
     def save_players_from_tournament(self):
         serialized_players = []
@@ -497,15 +512,16 @@ class SaveDataInDB:
 
 
 class RequestsMenu:
-    def __init__(self):
+    def __init__(self, tournament: Tournament):
+        self.tournament = tournament
+        self.User = Query
         self.request = what_request()
         self.which_tournament = self.check_and_complete_the_request()
         self.search_in_database(self.which_tournament)
 
     def check_and_complete_the_request(self):
         if self.request not in ["1", "2", "3", "4", "5", "6", "7", "8"]:
-            print("please, enter only the integer corresponding to your request")
-            raise ValueError
+            raise ValueError("please, enter only the integer corresponding to your request")
 
         if self.request in ["1", "2", "6", "7"]:
             which_tournament = requesting_tournament_name()
@@ -513,9 +529,9 @@ class RequestsMenu:
 
     def search_in_database(self, which_tournament):
         if self.request == "1":
-            self.players_in_a_tournament_ranked_alphabetically(which_tournament)
+            self.players_in_a_tournament_ranked_alphabetically()
         elif self.request == "2":
-            self.players_ranking_from_a_tournament(which_tournament)
+            self.players_ranking_from_a_tournament()
         elif self.request == "3":
             self.all_tournaments_players_ranked_alphabetically()
         elif self.request == "4":
@@ -527,29 +543,124 @@ class RequestsMenu:
         elif self.request == "7":
             self.all_matches_in_a_tournament(which_tournament)
 
-    @staticmethod
-    def players_in_a_tournament_ranked_alphabetically(which_tournament):
-        if which_tournament == tournament.name:
-            return sorted(tournament.list_of_players_instances, key=lambda x: x.last_name)
-        else:
-            player_table_name = which_player_table()
-            print("to be completed")
-            if False:
-                "We didn't find the tournament you are referring to, make sure the name of the " \
-                "tournament is correctly written"
-                raise ValueError
+    def find_the_player_table(self):
+        # Q: The if-else statement is probably useless, I could do the query anyway. However, I am
+        # wondering if it is faster to make the query only if necessary. What's your opinion ?
 
-    @staticmethod
-    def players_ranking_from_a_tournament(which_tournament):
-        if which_tournament == tournament.name:
-            return sorted(tournament.list_of_players_instances, key=lambda x: x.ranking)
-        else:
-            which_player = which_player_table()
-            print("to be completed")
-            if False:
-                "We didn't find the tournament you are referring to, make sure the name of the " \
-                "tournament is correctly written"
-                raise ValueError
+        if self.which_tournament == self.tournament:
+        #if which_tournament == self.tournament.name:
+            #player_table_name = f"players_competing_in_{self.tournament.name}"
+            player_table_name = f"players_competing_in_{self.tournament}"
+            serialized_players = db.table(player_table_name)
+        elif self.which_tournament != self.tournament:
+            player_table_name = f"players_competing_in_{self.which_tournament}"
+            db.clear_cache()
+            serialized_players = db.search(self.User.name == player_table_name)
+        return serialized_players
+
+    def deserialize_players(self):
+        serialized_players = self.find_the_player_table()
+        list_of_deserialized_players = []
+        for serialized_player in serialized_players:
+            last_name = serialized_player['last_name']
+            first_name = serialized_player['first_name']
+            date_of_birth = serialized_player['date_of_birth'].replace("-", "/")
+            sex = serialized_player['sex']
+            ranking = int(serialized_player['ranking'])
+            opponents_faced = []
+            result_field = float(serialized_player["result_field"])
+
+            player = Player(last_name, first_name, date_of_birth, sex, ranking, opponents_faced, result_field)
+
+            opponents_faced = json.loads(serialized_player['opponents_faced'])
+            # why not append the entire list directly ? Because an empty list would be appended
+            for opponent in opponents_faced:
+                player.opponents_faced.append(opponent)
+            list_of_deserialized_players.append(player)
+
+        if list_of_deserialized_players is None:
+            raise ValueError("We didn't find the player table. Can you check the spelling of the tournament name ?")
+
+        return list_of_deserialized_players
+
+    def find_the_tournament_table(self):
+        if self.which_tournament == self.tournament:
+        #if self.which_tournament == self.tournament.name:
+            #tournament_table_name = self.tournament.name
+            tournament_table_name = self.tournament
+            serialized_tournament = db.table(tournament_table_name)
+        elif self.which_tournament != self.tournament:
+            tournament_table_name = self.which_tournament
+            db.clear_cache()
+            serialized_tournament = db.search(self.User.name == tournament_table_name)
+            print(f"this is serialized_tournament as returned by find_the_tournament_table: {serialized_tournament}")
+        return serialized_tournament
+
+    def deserialize_tournament(self):
+        serialized_tournament = self.find_the_tournament_table()
+        tournament_name = serialized_tournament.name
+        # the Table class in TinyDB doesn't implement the __getitem__ method so I need to typecast the table.
+        serialized_tournament = list(serialized_tournament)[0]
+        tournament_venue = serialized_tournament["venue"]
+        tournament_date = serialized_tournament["date"]
+        tournament_players_number = serialized_tournament["players number"]
+        tournament_description = serialized_tournament["description"]
+        tournament_time_control = serialized_tournament["time control"]
+        tournament_number_of_rounds = serialized_tournament["number of rounds"]
+
+        tournament_rounds_serialized = serialized_tournament["rounds"]
+        tournament_rounds = {}
+        for round_name, serialized_round in tournament_rounds_serialized.items():
+            deserialized_round = self.deserialize_round(serialized_round)
+            tournament_rounds[round_name] = deserialized_round
+
+        deserialized_tournament = Tournament(tournament_name, tournament_venue, tournament_date,
+                                             tournament_players_number, tournament_description, tournament_time_control,
+                                             tournament_number_of_rounds, tournament_rounds)
+        print(f"this is deserialized_tournament as returned by deserialize_tournament: {deserialized_tournament}")
+        return deserialized_tournament
+
+    def deserialize_round(self, serialized_round):
+        round_name_field = serialized_round
+        round_tournament = serialized_round["tournament"]
+
+        round_s_datetime = serialized_round["start_datetime"]
+        epoch_s_datetime = datetime.datetime.fromisoformat(round_s_datetime).timestamp()
+
+        round_e_datetime = serialized_round["end_datetime"]
+        epoch_e_datetime = datetime.datetime.fromisoformat(round_e_datetime).timestamp()
+
+        serialized_matches = serialized_round["matches"]
+        round_matches = {}
+        for match_number, serialized_match in serialized_matches.items():
+            deserialized_match = self.deserialize_matches(serialized_match)
+            round_matches[f"match{match_number}"] = deserialized_match
+        deserialized_round = Round(round_name_field, round_tournament, epoch_s_datetime,
+                                   epoch_e_datetime, round_matches)
+        print(f"this is deserialized_round: {deserialized_round}")
+        return deserialized_round
+
+    def deserialize_matches(self, serialized_match):
+        print(f"this is serialized_match:{serialized_match}")
+        match_player1 = serialized_match["player1"]
+        match_player_2 = serialized_match["player2"]
+        match_result = serialized_match["result"]
+        match_round = serialized_match["result"]
+        deserialized_match = Match(match_player1, match_player_2, match_result, match_round)
+        print(f"this is deserialized_match: {deserialized_match}")
+        return deserialized_match
+
+    def players_ranking_from_a_tournament(self):
+        list_of_deserialized_players = self.deserialize_players()
+        sorted_deserialized_players = sorted(list_of_deserialized_players, key=lambda x: x.ranking)
+        print(f"this is the return value of players_ranking_from_a_tournament {sorted_deserialized_players}")
+        return sorted_deserialized_players
+
+    def players_in_a_tournament_ranked_alphabetically(self):
+        list_of_deserialized_players = self.deserialize_players()
+        sorted_deserialized_players = sorted(list_of_deserialized_players, key=lambda x: x.last_name)
+        print(f"this is the return value of players_in_a_tournament_ranked_alphabetically: {sorted_deserialized_players}")
+        return sorted_deserialized_players
 
     @staticmethod
     def all_tournaments_players_ranking():
@@ -563,28 +674,28 @@ class RequestsMenu:
     def all_tournaments():
         pass
 
-    @staticmethod
-    def all_matches_in_a_tournament(which_tournament):
-    # TO DO: make a var holding all the matches from the tournament and use it below
-        if which_tournament == tournament.name:
-            return tournament.rounds
+    def all_matches_in_a_tournament(self, which_tournament):
+        # TO DO: make a var holding all the matches from the tournament and use it below
+        #if which_tournament == self.tournament.name:
+        if which_tournament == self.tournament:
+            #return self.tournament.rounds
+            self.deserialize_tournament()
         else:
-            print("to be completed")
+            self.deserialize_tournament()
             if False:
-                "We didn't find the tournament you are referring to, make sure the name of the " \
-                "tournament is correctly written"
-                raise ValueError
+                raise ValueError("We didn't find the tournament you are referring to, make sure the name of the " \
+                                 "tournament is correctly written")
 
-    @staticmethod
-    def all_rounds_in_a_tournament(which_tournament):
-        if which_tournament == tournament.name:
-            return tournament.rounds
+    def all_rounds_in_a_tournament(self, which_tournament):
+        #if which_tournament == self.tournament.name:
+        if which_tournament == self.tournament:
+            self.deserialize_tournament()
+            #return self.tournament.rounds
         else:
-            print("to be completed")
+            self.deserialize_tournament()
             if False:
-                "We didn't find the tournament you are referring to, make sure the name of the " \
-                "tournament is correctly written"
-                raise ValueError
+                raise ValueError("We didn't find the tournament you are referring to, make sure the name of the " \
+                                 "tournament is correctly written")
 
 
 if __name__ == "__main__":
@@ -593,10 +704,8 @@ if __name__ == "__main__":
     We get the info from the VIEW.
     """
 
-
     # instantiating the tournament
     tournament = Tournament(*insert_tournament_info())
-
 
     storing_player_instances_in_tournament = CreatingPlayerStoringInTournament(tournament)
 
@@ -619,6 +728,7 @@ if __name__ == "__main__":
         # class is i+1.
 
         # here there should be a call to a func allowing the manager to save, transform or load data to the DB
+        SUBSEQUENT_ROUNDS = True
         possibly_saving_data = SaveDataInDB(tournament)
 
         announce_pairing_for_subsequent_round()
@@ -637,5 +747,8 @@ if __name__ == "__main__":
           f"this is player4:{tournament.list_of_players_instances[3]}")
 
     announce_ranking()
+
+
+    making_a_request = RequestsMenu("french presidents")
 
 
