@@ -3,7 +3,7 @@ def insert_tournament_info():
     tournament_name: str = input("Hi, we hope our program will help you store all the data you need on your "
                                  "chess tournaments. "
                                  "Please follow the instructions carefully, remembering that the program "
-                                 "is case sensitive. Do not write unnecessary spaces.\n\n"
+                                 "is case sensitive. Do not type unnecessary spaces.\n\n"
                                  "Please enter the tournament's name\n")
     tournament_venue: str = input("Please enter the tournament's venue\n")
     tournament_date: str = input("Enter the tournament's date. "

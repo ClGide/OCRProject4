@@ -70,8 +70,10 @@ class Player:
 
     def correct_attributes_type(self):
         self.ranking = int(self.ranking)
-
-        date_in_datetime_type = datetime.datetime.strptime(self.date_of_birth, "%Y/%m/%d")
+        try:
+            date_in_datetime_type = datetime.datetime.strptime(self.date_of_birth, "%Y/%m/%d")
+        except ValueError:
+            date_in_datetime_type = datetime.datetime.strptime(self.date_of_birth, "%Y-%m-%d")
         self.date_of_birth = date_in_datetime_type
         self.date_of_birth = self.date_of_birth.date()
 
@@ -205,3 +207,4 @@ class Match:
                             "result": self.result,
                             "round": self.round.name_field}
         return serialized_match
+
