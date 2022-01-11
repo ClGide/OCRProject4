@@ -13,8 +13,6 @@ from models import Player, Round, Tournament, Match
 from view import insert_player_info, insert_tournament_info, insert_results, what_request, requesting_tournament_name, \
     requesting_table_to_save_first_round, requesting_player_table_name, requesting_table_to_save_subsequent_round
 
-SUBSEQUENT_ROUNDS = False
-
 
 class CreatingPlayerStoringInTournament:
     """
@@ -550,16 +548,15 @@ class RequestsMenu:
     def find_the_player_table(self):
         # Q: The if-else statement is probably useless, I could do the query anyway. However, I am
         # wondering if it is faster to make the query only if necessary. What's your opinion ?
-
         if self.which_tournament == self.tournament.name:
             player_table_name = f"players_competing_in_{self.tournament.name}"
             serialized_players = db.table(player_table_name)
 
-        elif self.which_tournament != self.tournament:
-
+        elif self.which_tournament != self.tournament.name:
+            database = self.open_database()
             player_table_name = f"players_competing_in_{self.which_tournament}"
-            db.clear_cache()
-            serialized_players = db.search(self.User.name == player_table_name)
+            serialized_players = [table for table_name, table in database.items()
+                                  if table_name == player_table_name]
             if not serialized_players:
                 raise KeyError("the player table you're searching wasn't found. Please, check your spelling")
 
@@ -567,38 +564,51 @@ class RequestsMenu:
 
     def deserialize_players(self):
         serialized_players = self.find_the_player_table()
-        list_of_deserialized_players = []
-        for serialized_player in serialized_players:
-            last_name = serialized_player['last_name']
-            first_name = serialized_player['first_name']
-            date_of_birth = serialized_player['date_of_birth'].replace("-", "/")
-            sex = serialized_player['sex']
-            ranking = int(serialized_player['ranking'])
-            opponents_faced = []
-            result_field = float(serialized_player["result_field"])
 
-            player = Player(last_name, first_name, date_of_birth, sex, ranking, opponents_faced, result_field)
+        try:
+            list_of_deserialized_players = []
 
-            opponents_faced = json.loads(serialized_player['opponents_faced'])
-            # why not append the entire list directly ? Because an empty list would be appended
-            for opponent in opponents_faced:
-                player.opponents_faced.append(opponent)
-            list_of_deserialized_players.append(player)
+            for serialized_player in serialized_players:
+                last_name = serialized_player['last_name']
+                first_name = serialized_player['first_name']
+                date_of_birth = serialized_player['date_of_birth'].replace("-", "/")
+                sex = serialized_player['sex']
+                ranking = int(serialized_player['ranking'])
+                opponents_faced = []
+                result_field = float(serialized_player["result_field"])
 
-        return list_of_deserialized_players
+                player = Player(last_name, first_name, date_of_birth, sex, ranking, opponents_faced, result_field)
+
+                opponents_faced = json.loads(serialized_player['opponents_faced'])
+                # why not append the entire list directly ? Because an empty list would be appended
+                for opponent in opponents_faced:
+                    player.opponents_faced.append(opponent)
+                list_of_deserialized_players.append(player)
+
+                return list_of_deserialized_players
+
+        except KeyError:
+            list_of_deserialized_players = []
+
+            # serialized_players is a list containing one dictionary
+            # containing doc_id(key):player_attributes(value) pairs
+            for serialized_players_dict in serialized_players:
+                for doc_id, player_attributes in serialized_players_dict.items():
+                    player_attributes["result_field"] = float(player_attributes["result_field"])
+                    player = Player(**player_attributes)
+                    list_of_deserialized_players.append(player)
+
+            return list_of_deserialized_players
 
     def find_the_tournament_table(self):
         if self.which_tournament == self.tournament.name:
-            tournament_table_name = self.tournament.name
-            serialized_tournament = db.table(tournament_table_name)
+            serialized_tournament = db.table(self.tournament.name)
 
-        elif self.which_tournament != self.tournament:
-            tournament_table_name: str = self.which_tournament
-            db.clear_cache()
-            serialized_tournament = db.search(self.User.name == tournament_table_name)
-            print(f"this is serialized_tournament as returned by find_the_tournament_table: {serialized_tournament}")
+        elif self.which_tournament != self.tournament.name:
+            database = self.open_database()
+            serialized_tournament = [table for table_name, table in database.items() if table_name == self.which_tournament]
             if not serialized_tournament:
-                raise KeyError("the tournament you're searching wasn't found. Please, check your spelling")
+                raise KeyError("the player table you're searching wasn't found. Please, check your spelling")
 
         return serialized_tournament
 
@@ -741,11 +751,12 @@ if __name__ == "__main__":
     For each new tournament, the script will be run again. Therefore, we know we only need one tournament instance. 
     We get the info from the VIEW.
     """
+    SUBSEQUENT_ROUNDS = False
 
     # instantiating the tournament
     tournament = Tournament(*insert_tournament_info())
 
-    """storing_player_instances_in_tournament = CreatingPlayerStoringInTournament(tournament)
+    storing_player_instances_in_tournament = CreatingPlayerStoringInTournament(tournament)
 
     # setting up the first round
     announce_pairing_for_first_round()
@@ -759,15 +770,13 @@ if __name__ == "__main__":
     matches_from_last_round = tournament.rounds["Round 1"].dict_of_matches
     update_all_players_attrs_after_round(matches_from_last_round)
 
+    possibly_saving_data = SaveDataInDB(tournament)
+
     for i in range(1, tournament.number_of_rounds):
         # the algorithm used for the first round and for the subsequent rounds are different. Therefore,
         # the first round matches are instantiated out of the loop. The range built-in function starts at
         # zero but the first round is round1, that's why the arg passed to the CreatingMatchStoringInRoundOne
-        # class is i+1.
-
-        # here there should be a call to a func allowing the manager to save, transform or load data to the DB
-        possibly_saving_data = SaveDataInDB(tournament)
-        SUBSEQUENT_ROUNDS = True
+        # class is i+1
 
         announce_pairing_for_subsequent_round()
         time_control(tournament)
@@ -776,7 +785,7 @@ if __name__ == "__main__":
         matches_from_last_round = tournament.rounds[f"Round {i + 1}"].dict_of_matches
         update_all_players_attrs_after_round(matches_from_last_round)
 
-    possibly_saving_data = SaveDataInDB(tournament)
+        possibly_saving_data = SaveDataInDB(tournament)
 
     print(f"the idea is to be sure that the players attributes are updated correctly\n"
           f"this is player1:{tournament.list_of_players_instances[0]}\n"
@@ -784,7 +793,7 @@ if __name__ == "__main__":
           f"this is player3:{tournament.list_of_players_instances[2]}\n"
           f"this is player4:{tournament.list_of_players_instances[3]}")
 
-    announce_ranking()"""
+    announce_ranking()
 
     making_a_request = RequestsMenu(tournament)
 
