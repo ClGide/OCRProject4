@@ -1,7 +1,7 @@
 import datetime
 import json
 from operator import attrgetter
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Tuple, Any
 
 from tinydb import TinyDB, Query
 
@@ -101,9 +101,11 @@ class RequestsMenu:
         return serialized_players
 
     def deserialize_players(self) -> List[Player]:
-        serialized_players: List[Dict[str, Dict[str, Union[str, list, float]]]] = self.find_the_player_table()
+
         # serialized_players is a list containing one dictionary
         # containing doc_id(key):player_attributes(value) pairs
+        serialized_players: List[Dict[str, Dict[str, Union[str, list, float]]]] = self.find_the_player_table()
+
         list_of_deserialized_players = []
         for serialized_players_dict in serialized_players:
             for doc_id, player_attributes in serialized_players_dict.items():
@@ -119,39 +121,48 @@ class RequestsMenu:
         return list_of_deserialized_players
 
     def find_the_tournament_table(self) -> \
-            List[Dict[str, Union[str, int, Dict[str, Union[str, Dict[str, str]]]]]]:
+            Tuple[str, Dict[str, Union[str, int, Dict[str, Union[str, Dict[str, str]]]]]]:
+
         database = self.open_database()
 
-        serialized_tournament = [table for table_name, table in database.items() if table_name == self.which_tournament]
-        if not serialized_tournament:
+        serialized_tournament_data: List[Tuple[str, Any]] = [(table_name, table) for table_name, table in database.items() if table_name == self.which_tournament]
+        if not serialized_tournament_data:
             raise KeyError("the player table you're searching wasn't found. Please, check your spelling")
 
-        return serialized_tournament
+        # the tuple we need is the only object in the list
+        tournament_name_and_table: Tuple = serialized_tournament_data[0]
+
+        return tournament_name_and_table
 
     def deserialize_tournament(self) -> Tournament:
-        serialized_tournament = self.find_the_tournament_table()
-        tournament_name = serialized_tournament.name
-        # the Table class in TinyDB doesn't implement the __getitem__ method so I need to typecast the table.
-        serialized_tournament = list(serialized_tournament)[0]
-        tournament_venue = serialized_tournament["venue"]
-        tournament_date = serialized_tournament["date"]
-        tournament_players_number = serialized_tournament["players number"]
-        tournament_description = serialized_tournament["description"]
-        tournament_time_control = serialized_tournament["time control"]
-        tournament_number_of_rounds = serialized_tournament["number of rounds"]
+        tournament_name, tournament_table = self.find_the_tournament_table()
 
-        tournament_rounds_serialized = serialized_tournament["rounds"]
-        tournament_rounds = {}
-        for round_name, serialized_round in tournament_rounds_serialized.items():
-            deserialized_round = self.deserialize_round(serialized_round)
-            tournament_rounds[round_name] = deserialized_round
+        tournament_name: str = tournament_name
 
-        deserialized_tournament = Tournament(tournament_name, tournament_venue, tournament_date,
-                                             tournament_players_number, tournament_description, tournament_time_control,
-                                             tournament_number_of_rounds, tournament_rounds)
+        # there will always be only one iteration of the following loop. However, given that the tinyDB table
+        # doesn't implement  the __getitem__ attr, I couldn't think of another way to deserialize the tournament.
+        tournament_attrs: List[Union[str, Any]] = []
+        for attr_name, attrs_value in tournament_table.items():
+            tournament_attrs.append(tournament_name)
+            tournament_attrs.append(attrs_value["venue"])
+            tournament_attrs.append(attrs_value["date"])
+            tournament_attrs.append(attrs_value["players number"])
+            tournament_attrs.append(attrs_value["description"])
+            tournament_attrs.append(attrs_value["time control"])
+            tournament_attrs.append(attrs_value["number of rounds"])
+
+            tournament_rounds_serialized = attrs_value["rounds"]
+            tournament_rounds = {}
+            for round_name, serialized_round in tournament_rounds_serialized.items():
+                deserialized_round = self.deserialize_round(serialized_round)
+                tournament_rounds[round_name] = deserialized_round
+            tournament_attrs.append(tournament_rounds)
+
+        deserialized_tournament = Tournament(*tournament_attrs)
+
         return deserialized_tournament
 
-    def deserialize_round(self, serialized_round):
+    def deserialize_round(self, serialized_round) -> Round:
         round_name_field = serialized_round
         round_tournament = serialized_round["tournament"]
 
@@ -161,37 +172,43 @@ class RequestsMenu:
         round_e_datetime = serialized_round["end_datetime"]
         epoch_e_datetime = datetime.datetime.fromisoformat(round_e_datetime).timestamp()
 
-        serialized_matches = serialized_round["matches"]
+        serialized_matches = serialized_round["dict_of_matches"]
         round_matches = {}
         for match_number, serialized_match in serialized_matches.items():
             deserialized_match = self.deserialize_matches(serialized_match)
             round_matches[f"match{match_number}"] = deserialized_match
+
         deserialized_round = Round(round_name_field, round_tournament, epoch_s_datetime,
                                    epoch_e_datetime, round_matches)
-        print(f"this is deserialized_round: {deserialized_round}")
+
+
         return deserialized_round
 
     @staticmethod
-    def deserialize_matches(serialized_match):
+    def deserialize_matches(serialized_match) -> Match:
         match_player1 = serialized_match["player1"]
         match_player_2 = serialized_match["player2"]
         match_result = serialized_match["result"]
         match_round = serialized_match["round"]
         deserialized_match = Match(match_player1, match_player_2, match_result, match_round)
-        print(f"this is deserialized_match: {deserialized_match}")
+
         return deserialized_match
 
-    def players_ranking_from_a_tournament(self):
-        list_of_deserialized_players = self.deserialize_players()
+    def players_ranking_from_a_tournament(self) -> List[Player]:
+        list_of_deserialized_players: List[Player] = self.deserialize_players()
         sorted_deserialized_players = sorted(list_of_deserialized_players, key=lambda x: x.ranking)
-        print(f"this is the return value of players_ranking_from_a_tournament {sorted_deserialized_players}")
+
+        print(f"This is the ranking from the selected tournament:\n{sorted_deserialized_players}")
+
         return sorted_deserialized_players
 
-    def players_in_a_tournament_ranked_alphabetically(self):
+    def players_in_a_tournament_ranked_alphabetically(self) -> List[Player]:
         list_of_deserialized_players: List[Player] = self.deserialize_players()
         sorted_deserialized_players = sorted(list_of_deserialized_players, key=lambda x: x.last_name)
+
         print(
-            f"this is the return value of players_in_a_tournament_ranked_alphabetically: {sorted_deserialized_players}")
+            f"those are the players from the selected tournament, ranked alphabetically:\n{sorted_deserialized_players}")
+
         return sorted_deserialized_players
 
     def gather_players_from_all_tournaments(self) -> List[Player]:
@@ -210,8 +227,7 @@ class RequestsMenu:
 
         return all_players
 
-    def all_tournaments_players_ranking(self):
-        # QUESTION: What takes precedence, the DRY principle or the less dependencies principle ?
+    def all_tournaments_players_ranking(self) -> List[Player]:
         all_players = self.gather_players_from_all_tournaments()
 
         for player in all_players:
@@ -222,6 +238,9 @@ class RequestsMenu:
         for player in all_players:
             player.ranking = -player.__getattribute__("ranking")
 
+        print(f"this is the ranking of all the players available in the database:\n "
+              f"{all_players_ranked}")
+
         return all_players_ranked
 
     def all_tournaments_players_ranked_alphabetically(self) -> List[Player]:
@@ -229,9 +248,12 @@ class RequestsMenu:
 
         all_players_ranked = sorted(all_players, key=attrgetter("last_name"))
 
+        print(f"those are the players from all the tournaments available in the database,"
+              f" ranked alphabetically:\n{all_players_ranked}")
+
         return all_players_ranked
 
-    def all_tournaments(self):
+    def all_tournaments(self) -> List[Tournament]:
         database = self.open_database()
 
         all_tournaments = []
@@ -240,6 +262,9 @@ class RequestsMenu:
                 if list(nested_table.keys())[0] == "venue":
                     tournament_table = nested_table
                     all_tournaments.append(tournament_table)
+
+        print(f"those are all the tournaments available in the database:\n"
+              f"{all_tournaments}")
 
         return all_tournaments
 
@@ -250,7 +275,7 @@ class RequestsMenu:
         for round in deserialized_tournament.rounds.values():
             for match in round.dict_of_matches.values():
                 all_matches_in_a_tournament.append(match)
-        print(f"this is the return value of all_matches_in_a_tournament: {all_matches_in_a_tournament} ")
+        print(f"those are all the matches in the selected tournament: {all_matches_in_a_tournament} ")
         return all_matches_in_a_tournament
 
     def all_rounds_in_a_tournament(self):
@@ -258,5 +283,7 @@ class RequestsMenu:
         all_rounds_in_a_tournament = []
         for round in deserialized_tournament.rounds.values():
             all_rounds_in_a_tournament.append(round)
-        print(f"this is the return value of all_matches_in_a_tournament: {all_rounds_in_a_tournament} ")
+
+        print(f"those are all the rounds in the selected tournament: {all_rounds_in_a_tournament} ")
+
         return all_rounds_in_a_tournament

@@ -6,11 +6,6 @@ from typing import Dict, List, Tuple
 from models import Player, Round, Tournament, Match
 from view import collect_player_info, collect_results
 
-"""
-Ignore the unresolved reference 'tournament'. All the action is happening in controller_3 where 'tournament 
-is instantiated. 
-"""
-
 
 class CreatingPlayersStoringInTournament:
     def __init__(self, tournament: Tournament):
@@ -54,13 +49,13 @@ def lengthen_player_representation(players: List[Player]):
 
 
 def beautify_player_representation(func):
-    def wrapper():
+    def wrapper(tournament: Tournament):
         # shortening the representation of each player in order to make it suitable for the view.
         shortened_representation_players = []
         for player in shorten_player_representation(tournament.list_of_players_instances):
             shortened_representation_players.append(player)
 
-        func()
+        func(tournament)
 
         # restore the object representation for further uses.
         restored_representation_players = []
@@ -82,7 +77,7 @@ def pairing_for_first_round(players: List[Player]) -> List[Tuple[Player, Player]
 
 
 @beautify_player_representation
-def announce_pairing_for_first_round():
+def announce_pairing_for_first_round(tournament):
     # should this go directly in the view ? probably not, because there is some method overriding.
     # for a 16 player tournament, pairs[0] should meet pairs[8], pairs[1] should meet pairs[9] and so on.
     pairs = pairing_for_first_round(tournament.list_of_players_instances)
@@ -140,13 +135,13 @@ class CreatingRoundStoringInTournament:
 
 
 class CreatingMatchesStoringInRoundOne:
-    def __init__(self, round_number: int):
+    def __init__(self, tournament: Tournament, round_number: int):
+        self.tournament = tournament
         self.round_number = round_number
         self.instantiate_and_store_matches_in_round()
 
-    @staticmethod
-    def request_match_results() -> List[str]:
-        players_pairs: List[Tuple[Player, Player]] = pairing_for_first_round(tournament.list_of_players_instances)
+    def request_match_results(self) -> List[str]:
+        players_pairs: List[Tuple[Player, Player]] = pairing_for_first_round(self.tournament.list_of_players_instances)
 
         results = []
         for i in range(len(players_pairs)):
@@ -157,11 +152,11 @@ class CreatingMatchesStoringInRoundOne:
         return results
 
     def collect_matches_info(self) -> List[Tuple[Player, Player, str, Round]]:
-        player_pairs_for_first_round = pairing_for_first_round(tournament.list_of_players_instances)
+        player_pairs_for_first_round = pairing_for_first_round(self.tournament.list_of_players_instances)
 
         match_results = self.request_match_results()
 
-        match_round: Round = tournament.rounds[f"Round {self.round_number}"]
+        match_round: Round = self.tournament.rounds[f"Round {self.round_number}"]
 
         match_instances_attributes = []
         for i in range(len(player_pairs_for_first_round)):
@@ -181,17 +176,17 @@ class CreatingMatchesStoringInRoundOne:
             match_instance = Match(*matches_attributes[i])
             matches_instances[match_name] = match_instance
 
-        tournament.rounds[f"Round {self.round_number}"].dict_of_matches = matches_instances
+        self.tournament.rounds[f"Round {self.round_number}"].dict_of_matches = matches_instances
 
 
 class CreatingMatchesStoringInSubsequentRounds:
-    def __init__(self, round_number: int):
+    def __init__(self, tournament: Tournament, round_number: int):
+        self.tournament = tournament
         self.round_number = round_number
         self.instantiate_and_store_matches_in_round()
 
-    @staticmethod
-    def request_match_results() -> List[str]:
-        ranked_players: List[Player] = avoid_player_meeting_twice(tournament.list_of_players_instances)
+    def request_match_results(self) -> List[str]:
+        ranked_players: List[Player] = avoid_player_meeting_twice(self.tournament.list_of_players_instances)
 
         results = []
         for i in range(0, len(ranked_players), 2):
@@ -205,11 +200,11 @@ class CreatingMatchesStoringInSubsequentRounds:
         return results
 
     def gather_matches_info(self) -> List[Tuple[Player, Player, str, Round]]:
-        ranked_players: List[Player] = avoid_player_meeting_twice(tournament.list_of_players_instances)
+        ranked_players: List[Player] = avoid_player_meeting_twice(self.tournament.list_of_players_instances)
 
         match_results: List[str] = self.request_match_results()
 
-        match_round: Round = tournament.rounds[f"Round {self.round_number}"]
+        match_round: Round = self.tournament.rounds[f"Round {self.round_number}"]
 
         match_instances_attributes = []
 
@@ -234,7 +229,7 @@ class CreatingMatchesStoringInSubsequentRounds:
             match_instance = Match(*matches_attributes[i])
             matches_instances[match_name] = match_instance
 
-        tournament.rounds[f"Round {self.round_number}"].dict_of_matches = matches_instances
+        self.tournament.rounds[f"Round {self.round_number}"].dict_of_matches = matches_instances
 
 
 def check_match_result(player1: Player, player2: Player, match: Match):
@@ -289,7 +284,7 @@ def rank_players_for_subsequent_round(players_ranked_in_previous_round: List[Pla
     # then I'm sorting by points and rank in decreasing order
 
     for player in players_ranked_in_previous_round:
-        player.ranking = -player.ranking
+        player.ranking = -player.__getattribute__("ranking")
 
     players_sorted_by_points_then_rank = sorted(players_ranked_in_previous_round,
                                                 key=attrgetter("result_field", 'ranking'),
@@ -297,7 +292,7 @@ def rank_players_for_subsequent_round(players_ranked_in_previous_round: List[Pla
 
     # Restoring the rank of each player for further uses.
     for player in players_ranked_in_previous_round:
-        player.ranking = -player.ranking
+        player.ranking = -player.__getattribute__("ranking")
 
     # Updating players' rank attribute in accordance to the ranking we just done.
     # remember that index starts at 0 but rankings starts at 1.
@@ -326,7 +321,7 @@ def avoid_player_meeting_twice(players_ranked_in_previous_round: List[Player]) -
 
 
 @beautify_player_representation
-def announce_pairing_for_subsequent_round() -> List[str]:
+def announce_pairing_for_subsequent_round(tournament: Tournament) -> List[str]:
     paired_players: List[Player] = avoid_player_meeting_twice(tournament.list_of_players_instances)
 
     p = paired_players
@@ -341,24 +336,10 @@ def announce_pairing_for_subsequent_round() -> List[str]:
 
 
 @beautify_player_representation
-def announce_ranking() -> List[str]:
+def announce_ranking(tournament: Tournament) -> List[str]:
     ranking_announcement = []
     p = rank_players_for_subsequent_round(tournament.list_of_players_instances)
     for i in range(len(p)):
         ranking_announcement.append(f'{p[i]} is number {i + 1}')
 
     return ranking_announcement
-
-
-def time_control(tournament: Tournament):
-    # this function simulates the time each round takes depending on the time control chose
-    # by the manager when instantiating the tournament.
-    if tournament.time_control == "bullet" or tournament.time_control == "BULLET":
-        return time.sleep(10)
-    elif tournament.time_control == "blitz" or tournament.time_control == "BLITZ":
-        return time.sleep(300)
-    elif tournament.time_control == "rapid" or tournament.time_control == "RAPID":
-        return time.sleep(12000)
-    else:
-        raise ValueError("something went wrong with the instantiation of the tournament, "
-                         "namely it's time-control attribute")

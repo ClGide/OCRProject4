@@ -63,7 +63,7 @@ def complete_override_player_ranking():
 
 def what_table_to_save() -> str:
     manager_wants_to_save = input(
-        "Do you want to save some data ? Please enter the integer corresponding to your need:\n"
+        "Do you want to save some data ? Please enter the number corresponding to your need:\n"
         "1. I need to save a table with all the tournament info\n"
         "2. I need to save a table with all the players info\n"
         "3. I need to save both tables\n"
@@ -72,7 +72,7 @@ def what_table_to_save() -> str:
 
 
 def what_data_to_read() -> str:
-    request = input("Do you need something from the database ? just enter the integer corresponding to your request:\n"
+    request = input("Do you need something from the database ? just enter the number corresponding to your request:\n"
                     "1. a list with all the players from a tournament ranked alphabetically\n"
                     "2. a list with the ranking of all the players from a tournament\n"
                     "3. a list with the players from all the tournaments ranked alphabetically\n"
