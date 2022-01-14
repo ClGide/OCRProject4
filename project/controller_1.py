@@ -86,6 +86,8 @@ def announce_pairing_for_first_round(tournament):
     for pair in pairs:
         pairing_announcement.append(f'{pair[0]} will meet {pair[1]}')
 
+    print(f"\nthe matches for the following round are:\n{pairing_announcement}\n")
+
     return pairing_announcement
 
 
@@ -332,6 +334,8 @@ def announce_pairing_for_subsequent_round(tournament: Tournament) -> List[str]:
         if i >= 3 and (i % 2) != 0:
             pairing_announcement.append(f'{p[i - 1]} will meet {p[i]}')
 
+    print(f"\nthe matches for the following round are:\n{pairing_announcement}\n")
+
     return pairing_announcement
 
 
@@ -341,5 +345,7 @@ def announce_ranking(tournament: Tournament) -> List[str]:
     p = rank_players_for_subsequent_round(tournament.list_of_players_instances)
     for i in range(len(p)):
         ranking_announcement.append(f'{p[i]} is number {i + 1}')
+
+    print(f"\nthe final ranking is :\n{ranking_announcement}\n")
 
     return ranking_announcement

@@ -1,12 +1,11 @@
-from typing import List
-
 import time
+from typing import List
 
 from controller_1 import update_all_players_attrs_after_round, \
     CreatingMatchesStoringInRoundOne, CreatingMatchesStoringInSubsequentRounds, \
     CreatingPlayersStoringInTournament, CreatingRoundStoringInTournament
 from controller_2 import RequestsMenu, SaveDataInDB
-from models import Tournament
+from models import Tournament, Round
 from view import collect_tournament_info, override_tournament_description, override_player_ranking, \
     complete_override_player_ranking
 from view_display import display_ranking, display_first_round_matches, display_subsequent_round_matches
@@ -53,22 +52,28 @@ def time_control(tournament: Tournament):
 
 def update_start_end_datetime_round(round_number: int, tournament: Tournament):
 
-    round = tournament.rounds[f"Round {round_number}"]
+    round: Round = tournament.rounds[f"Round {round_number}"]
 
-    value_s = round.start_datetime
-    value_e = round.end_datetime
-    name_s = "start_datetime"
-    name_e = "end_datetime"
+    # When first instantiated, all the rounds' start datetime attribute and end datetime attribute
+    # have the same value. In order to update those values, we add the duration of a round to the
+    # start datetime and end datetime of the preceding round.
+    s: float = tournament.rounds[f"Round {round_number-1}"].start_datetime
+    e: float = tournament.rounds[f"Round {round_number-1}"].end_datetime
 
-    if tournament.time_control == "bullet":
-        round.__setattr__(name_s, value_s+180)
-        round.__setattr__(name_e, value_e+180)
-    elif tournament.time_control == "blitz":
-        round.__setattr__(name_s, value_s+300)
-        round.__setattr__(name_e, value_e+300)
-    elif tournament.time_control == "rapid":
-        round.__setattr__(name_s, value_s+12000)
-        round.__setattr__(name_e, value_e+12000)
+    if tournament.time_control == "bullet" or tournament.time_control == "BULLET":
+        round.start_datetime = s+180
+        round.end_datetime = e+180
+    elif tournament.time_control == "blitz" or tournament.time_control == "BLITZ":
+        round.start_datetime = s+300
+        round.end_datetime = e+300
+    elif tournament.time_control == "rapid" or tournament.time_control == "RAPID":
+        round.start_datetime = s+12000
+        round.end_datetime = e+12000
+
+    # we also need to update the beautified version of the start and end datetime
+    round.__post_init__()
+
+    tournament.rounds[f"Round {round_number}"] = round
 
 
 if __name__ == "__main__":
@@ -84,6 +89,9 @@ if __name__ == "__main__":
     # setting up the first round
     display_first_round_matches(tournament)
     storing_round_instances_in_tournament = CreatingRoundStoringInTournament(tournament)
+    # correcting the start and end datetime of the future rounds
+    for i in range(1, tournament.number_of_rounds):
+        update_start_end_datetime_round(i + 1, tournament)
 
     # the first round is taking place
     time_control(tournament)
@@ -110,7 +118,6 @@ if __name__ == "__main__":
 
             storing_more_match_instances_in_tournament = CreatingMatchesStoringInSubsequentRounds(tournament, i + 1)
             matches_from_last_round = tournament.rounds[f"Round {i + 1}"].dict_of_matches
-            update_start_end_datetime_round(i+1, tournament)
             update_all_players_attrs_after_round(matches_from_last_round)
 
             request_new_tournament_description(tournament)
@@ -121,5 +128,3 @@ if __name__ == "__main__":
     display_ranking(tournament)
 
     making_a_request = RequestsMenu(tournament)
-
-

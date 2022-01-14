@@ -125,7 +125,8 @@ class RequestsMenu:
 
         database = self.open_database()
 
-        serialized_tournament_data: List[Tuple[str, Any]] = [(table_name, table) for table_name, table in database.items() if table_name == self.which_tournament]
+        serialized_tournament_data: List[Tuple[str, Any]] = \
+            [(table_name, table) for table_name, table in database.items() if table_name == self.which_tournament]
         if not serialized_tournament_data:
             raise KeyError("the player table you're searching wasn't found. Please, check your spelling")
 
@@ -181,7 +182,6 @@ class RequestsMenu:
         deserialized_round = Round(round_name_field, round_tournament, epoch_s_datetime,
                                    epoch_e_datetime, round_matches)
 
-
         return deserialized_round
 
     @staticmethod
@@ -207,7 +207,8 @@ class RequestsMenu:
         sorted_deserialized_players = sorted(list_of_deserialized_players, key=lambda x: x.last_name)
 
         print(
-            f"those are the players from the selected tournament, ranked alphabetically:\n{sorted_deserialized_players}")
+            f"those are the players from the selected tournament, ranked alphabetically:\n"
+            f"{sorted_deserialized_players}")
 
         return sorted_deserialized_players
 

@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Tuple
 
 
 def collect_tournament_info() -> Tuple[str, str, str, str, str, str, str]:
@@ -23,7 +23,7 @@ def collect_tournament_info() -> Tuple[str, str, str, str, str, str, str]:
 def collect_results(player1: str) -> str:
     # No computation should be done here. All we need to do is take result for each mach, store it and
     # transfer it in the controller.
-    match_result = input(f"What was the result of the match ? Enter 'W' if {player1} winned, "
+    match_result = input(f"What was the result of the match ? Enter 'W' if {player1} won, "
                          "'L' if he lost and 'D  if the match ended in a draw \n")
     return match_result
 
@@ -85,6 +85,5 @@ def what_data_to_read() -> str:
 
 
 def what_tournament_name():
-    which_tournament = input("which tournament are you refering to ?")
+    which_tournament = input("which tournament are you referring to ?")
     return which_tournament
-
