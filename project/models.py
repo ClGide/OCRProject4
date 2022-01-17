@@ -1,23 +1,56 @@
+""" Defines the classes representing the matches, rounds
+players and tournaments.
+"""
+
 from __future__ import annotations
 
 import datetime
 import json
 from dataclasses import dataclass
-from typing import List, Dict, Optional, Union, Tuple
+from typing import List, Dict, Optional, Union, Tuple, Any
 
 
 @dataclass
 class Round:
+
+    """Stores data of a specific round.
+
+    Attributes:
+        name_field: the name of the round.
+        tournament: the tournament in which the round takes place.
+        start_datetime: epoch style representation of the time the
+            round is instantiated. In the representation of the
+            object, the value is converted to human readable time.
+        end_datetime: epoch style representation of the time the
+            round ended. The value depend on the time control
+            chosen by the manager when the tournament was first
+            instantiated. In the representation of the
+            object, the value is converted to human readable time.
+        matches: contains the Match instances representing all the
+            matches that happened during the round.
+    """
+
     name_field: str
     tournament: Tournament
     start_datetime: float = 0
     end_datetime: float = 0
-    dict_of_matches: Optional[Dict[str, Match]] = None
+    matches: Optional[Dict[str, Match]] = None
 
     def serialize_matches(self) -> Union[str, Dict[str, Dict[str, str]]]:
+
+        """converts the Match instances to a serializable format.
+
+        If the matches attribute is not None, we convert each Match instance
+        into a dictionary : each key represents the attribute name
+        while the value represents the attribute value. We then nest
+        those ready-to-be-serialized matches into a dictionary where the key
+        represents the number of the match. If the matches attribute is None,
+        we return an empty string.
+        """
+
         try:
             serialized_matches = {}
-            matches: List[Match] = list(self.dict_of_matches.values())
+            matches: List[Match] = list(self.matches.values())
 
             for i in range(len(matches)):
                 serialized_matches[str(i + 1)] = matches[i].serialize_match()
@@ -28,37 +61,70 @@ class Round:
             serialized_matches = ""
             return serialized_matches
 
-    def serialize_round(self) -> Dict[str, Union[str, Dict[str, Dict[str, str]]]]:
+    def serialize_round(
+            self) -> Dict[str, Union[str, Dict[str, Dict[str, str]]]]:
+
+        """converts the round into a serializable format.
+
+        Returns: A dictionary where each key represents the attribute name
+            while the value represents the attribute value. If the matches
+            attribute is None, all the values in the dictionary are strings.
+            Otherwise, the last value in the dictionary is a dictionary
+            containing the data on all the matches that happened during the
+            round.
+        """
+
         serialized_matches = self.serialize_matches()
 
         serialized_round = {
             "tournament": self.tournament.name,
             "start_datetime": str(self.start_datetime_beautified),
             "end_datetime": str(self.end_datetime_beautified),
-            "dict_of_matches": serialized_matches}
+            "matches": serialized_matches}
 
         return serialized_round
 
     def __str__(self):
-        return f'the {self.name_field} from {self.tournament}. ' \
-               f'Started at {self.start_datetime_beautified}. ' \
-               f'Ended at {self.end_datetime_beautified}'
+        return (f'the {self.name_field} from {self.tournament}. '
+                f'Started at {self.start_datetime_beautified}. ' 
+                f'Ended at {self.end_datetime_beautified}')
 
     def __repr__(self):
         return self.__str__()
 
     def __post_init__(self):
-        # converting epoch time start and end datetime to user-friendly datetime.
-        self.start_datetime_beautified = datetime.datetime.fromtimestamp(self.start_datetime).replace(microsecond=0)
-        self.end_datetime_beautified = datetime.datetime.fromtimestamp(self.end_datetime).replace(microsecond=0)
+        """converting epoch time start and end datetime
+         to user-friendly datetime.
+         """
+        self.start_datetime_beautified = datetime.datetime.fromtimestamp(
+            self.start_datetime).replace(microsecond=0)
+
+        self.end_datetime_beautified = datetime.datetime.fromtimestamp(
+            self.end_datetime).replace(microsecond=0)
 
 
 class Player:
-    # this class won't be wrapped by dataclass because we don't know how to create class
-    # variable with dataclasses.
+
+    """Stores data on a specific player.
+
+    Attributes:
+        last_name: player's last name.
+        first_name: player's fist name.
+        date_of_birth: player's date of birth.
+        sex: player's sex.
+        ranking: player's ranking. Unlike for the preceding
+            attributes, the value of ranking will evolve
+            during the tournament. Idem for the following
+            two attributes.
+        opponents_faced: last name of the adversaries met by
+            the player during the tournament.
+        result_field: the number of points earned by the player
+            during the tournament.
+    """
 
     def __init__(self, last_name, first_name, date_of_birth, sex, ranking,
                  opponents_faced=None, result_field=0):
+
         self.last_name: str = last_name
         self.first_name: str = first_name
         self.date_of_birth: Union[datetime.date, str] = date_of_birth
@@ -77,34 +143,51 @@ class Player:
         self.opponents_faced = []
 
     def correct_attributes_type(self):
+
         self.ranking = int(self.ranking)
 
         try:
-            date_in_datetime_type = datetime.datetime.strptime(self.date_of_birth, "%Y/%m/%d")
+            date_in_datetime_type = \
+                datetime.datetime.strptime(self.date_of_birth, "%Y/%m/%d")
         except ValueError:
-            date_in_datetime_type = datetime.datetime.strptime(self.date_of_birth, "%Y-%m-%d")
+            date_in_datetime_type = \
+                datetime.datetime.strptime(self.date_of_birth, "%Y-%m-%d")
         self.date_of_birth = date_in_datetime_type
         self.date_of_birth = self.date_of_birth.date()
 
     def raise_error_for_incorrect_values(self):
-        if not (self.sex == "men" or self.sex == "women" or self.sex == "other" or
-                self.sex == "MEN" or self.sex == "WOMEN" or self.sex == "OTHER"):
-            raise ValueError("the sex of the player can be either men or women or other ")
+
+        if not (self.sex == "men"
+                or self.sex == "women"
+                or self.sex == "other"
+                or self.sex == "MEN"
+                or self.sex == "WOMEN"
+                or self.sex == "OTHER"):
+            raise ValueError("the sex of the player can be "
+                             "either 'men' or 'women' or 'other'.")
 
     def serialize_player(self) -> Dict[str, str]:
-        serialized_player = {"last_name": self.last_name,
-                             "first_name": self.first_name,
-                             "date_of_birth": str(self.date_of_birth),
-                             "sex": self.sex,
-                             "ranking": str(self.ranking),
-                             "opponents_faced": json.dumps(self.opponents_faced),
-                             "result_field": str(self.result_field)}
+
+        """Returns a ready-to-be-serialized format of
+        the data stored in the object.
+        """
+
+        serialized_player = \
+            {"last_name": self.last_name,
+             "first_name": self.first_name,
+             "date_of_birth": str(self.date_of_birth),
+             "sex": self.sex,
+             "ranking": str(self.ranking),
+             "opponents_faced": json.dumps(self.opponents_faced),
+             "result_field": str(self.result_field)}
 
         return serialized_player
 
     def __str__(self):
-        return f"Player({self.last_name}  ranking: {self.ranking} | " \
-               f"result field: {self.result_field} | opponents: {self.opponents_faced} ///)"
+        return (f"Player({self.last_name}  " 
+                f"ranking: {self.ranking} | " 
+                f"result field: {self.result_field} | " 
+                f"opponents: {self.opponents_faced} ///)")
 
     def __repr__(self):
         return self.__str__()
@@ -112,6 +195,23 @@ class Player:
 
 @dataclass
 class Tournament:
+
+    """Stores all the data about the tournament.
+
+    Attributes:
+        name: The name of the tournament.
+        venue: the name of the venue.
+        date: the date the tournament took place.
+        players_number: the number of competitors in the tournament.
+        description: anything the manager wants to note about the tournament.
+        time_control: bullet, blitz or rapid. Will be used to define the
+            duration of the round.
+         number_of_rounds: the number of rounds.
+         rounds: store all the Round instances that took place in the
+            tournament. Those instances store match instances.
+        player_instances: stores player instances.
+    """
+
     name: str
     venue: str
     date: Union[str, datetime]
@@ -120,14 +220,16 @@ class Tournament:
     time_control: str
     number_of_rounds: int = 4
     rounds: Dict[str, Round] = None
-    list_of_players_instances: List[Player] = None
+    players_instances: List[Player] = None
 
     def correct_attributes_type(self):
-        # the input is necessarily a string. Let's convert the attrs we want to integers.
+
         try:
-            date_in_datetime_type = datetime.datetime.strptime(self.date, "%Y/%m/%d")
+            date_in_datetime_type = datetime.datetime.strptime(
+                self.date, "%Y/%m/%d")
         except ValueError:
-            date_in_datetime_type = datetime.datetime.strptime(self.date, "%Y-%m-%d")
+            date_in_datetime_type = datetime.datetime.strptime(
+                self.date, "%Y-%m-%d")
         self.date = date_in_datetime_type
         self.date = self.date.date()
 
@@ -136,18 +238,34 @@ class Tournament:
         self.number_of_rounds = int(self.number_of_rounds)
 
     def raise_error_for_incorrect_values(self):
-        if not (self.time_control == "bullet" or self.time_control == "blitz" or self.time_control == "rapid" or
-                self.time_control == "BULLET" or self.time_control == "BLITZ" or self.time_control == "RAPID"):
-            raise ValueError("please, enter the name of one of the time control proposed")
+
+        if not (self.time_control == "bullet"
+                or self.time_control == "blitz"
+                or self.time_control == "rapid"
+                or self.time_control == "BULLET"
+                or self.time_control == "BLITZ"
+                or self.time_control == "RAPID"):
+            raise ValueError("please, enter the name"
+                             " of one of the time control proposed")
 
         if not self.players_number % 2 == 0:
-            raise ValueError("please, enter an even number of players. Otherwise, we cannot assure each player a match")
+            raise ValueError("please, enter an even number of players."
+                             " Otherwise, we cannot assure each "
+                             "player a match")
 
         if self.number_of_rounds > self.players_number:
-            raise ValueError("in the swiss-system tournament, there shouldn't be more "
+            raise ValueError("in the swiss-system tournament,"
+                             " there shouldn't be more "
                              "rounds than players.")
 
-    def serialize_rounds(self) -> Dict[str, Dict[str, Union[str, Dict[str, Dict[str, str]]]]]:
+    def serialize_rounds(
+        self
+    ) -> Dict[str, Dict[str, Union[str, Dict[str, Dict[str, str]]]]]:
+
+        """Returns a ready-to-be-serialized format of
+        the rounds that happened during the tournament.
+        """
+
         serialized_rounds = {}
 
         for round in self.rounds.values():
@@ -156,8 +274,16 @@ class Tournament:
 
         return serialized_rounds
 
-    def serialize_tournament(self) -> Dict[str,
-                                           Union[str, Dict[str, Dict[str, Union[str, Dict[str, Dict[str, str]]]]]]]:
+    def serialize_tournament(
+            self
+    ) -> Dict[str, Union[str,
+                         Dict[str, Dict[str,
+                                        Union[str, Dict[str, Any]]]]]]:
+
+        """Returns a ready-to-be-serialized format of
+        the data stored in the object.
+        """
+
         serialized_rounds = self.serialize_rounds()
 
         serialized_tournament = {
@@ -185,14 +311,32 @@ class Tournament:
 
 @dataclass
 class Match:
+
+    """Stores all the data about a specific match.
+
+    The first two attributes store the instances representing
+    the two competitors. The result, a single char ("W", "L" or
+    "D") needs to be understood from the perspective of player1.
+    The last attribute is the instance in which the matches are
+    stored.
+    """
+
     player1: Player
     player2: Player
     result: str
     round: Round
 
     def convert_match_result_into_points(self) -> List[Tuple[Player, float]]:
-        # We take the letter corresponding to the result from the view and we return
-        # the number of points each player gains.
+
+        """Prepares the data needed to change the player object's
+        attributes after the match.
+
+        Returns:
+            A list containing two tuples. Each tuple's first item
+            is a player instance while the second is the number
+            of points earned by that player in the match.
+        """
+
         if self.result == "W" or self.result == "w":
             points_player1 = 1.0
             points_player2 = 0.0
@@ -204,10 +348,18 @@ class Match:
             points_player2 = 0.5
         else:
             raise TypeError('please enter "W", "L" or "D"')
-        results = [(self.player1, points_player1), (self.player2, points_player2)]
+        results = [
+                (self.player1, points_player1),
+                (self.player2, points_player2)]
+
         return results
 
     def serialize_match(self) -> Dict[str, str]:
+
+        """Returns a ready-to-be-serialized format of
+        the data stored in the object.
+        """
+
         serialized_match = {"player1": self.player1.last_name,
                             "player2": self.player2.last_name,
                             "result": self.result,

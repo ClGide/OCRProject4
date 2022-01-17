@@ -1,3 +1,7 @@
+"""
+
+"""
+
 import datetime
 import json
 from operator import attrgetter
@@ -6,13 +10,15 @@ from typing import Dict, List, Union, Tuple, Any
 from tinydb import TinyDB, Query
 
 from models import Player, Round, Tournament, Match
-from view import what_data_to_read, what_tournament_name, \
-    what_table_to_save
+from view import (what_data_to_read,
+                  what_tournament_name,
+                  what_table_to_save)
 
 db = TinyDB('db.json', indent=4, separators=(',', ': '))
 
 
 class SaveDataInDB:
+
     def __init__(self, tournament: Tournament):
         self.what_table_to_save = what_table_to_save()
         self.tournament = tournament
@@ -27,12 +33,14 @@ class SaveDataInDB:
         elif self.what_table_to_save == "4":
             pass
         else:
-            raise ValueError("if you need something, please only enter the number corresponding "
+            raise ValueError("if you need something, "
+                             "please only enter the number corresponding "
                              "to your need")
 
     def save_players_from_tournament(self):
+
         serialized_players: List[Dict[str, str]] = []
-        for player in self.tournament.list_of_players_instances:
+        for player in self.tournament.players_instances:
             serialized_player: Dict[str, str] = player.serialize_player()
             serialized_players.append(serialized_player)
 
@@ -42,8 +50,8 @@ class SaveDataInDB:
         players_table.insert_multiple(serialized_players)
 
     def save_the_tournament(self, tournament_table_name: str):
-        serialized_tournament: Dict[str, Union[str, Dict[str, Dict[str, Union[str, Dict[str, Dict[str, str]]]]]]] = \
-            self.tournament.serialize_tournament()
+
+        serialized_tournament = self.tournament.serialize_tournament()
 
         tournament_table = db.table(tournament_table_name)
         tournament_table.truncate()
@@ -51,6 +59,7 @@ class SaveDataInDB:
 
 
 class RequestsMenu:
+
     def __init__(self, tournament: Tournament):
         self.tournament = tournament
         self.User = Query()
@@ -59,14 +68,17 @@ class RequestsMenu:
         self.search_in_database()
 
     def check_and_complete_the_request(self) -> str:
+
         if self.request not in ["1", "2", "3", "4", "5", "6", "7", "8"]:
-            raise ValueError("please, enter only the number corresponding to your request")
+            raise ValueError("please, enter only "
+                             "the number corresponding to your request")
 
         if self.request in ["1", "2", "6", "7"]:
             which_tournament = what_tournament_name()
             return which_tournament
 
     def search_in_database(self):
+
         if self.request == "1":
             self.players_in_a_tournament_ranked_alphabetically()
         elif self.request == "2":
@@ -85,18 +97,23 @@ class RequestsMenu:
     @staticmethod
     def open_database():
         f = open("db.json")
+
         database = json.load(f)
         f.close()
         return database
 
-    def find_the_player_table(self) -> List[Dict[str, Dict[str, Union[str, list, float]]]]:
+    def find_the_player_table(self) -> List[
+            Dict[str, Dict[str, Union[str, list, float]]]]:
+
         database = self.open_database()
 
         player_table_name = f"players_competing_in_{self.which_tournament}"
         serialized_players = [table for table_name, table in database.items()
                               if table_name == player_table_name]
         if not serialized_players:
-            raise KeyError("the player table you're searching wasn't found. Please, check your spelling")
+            raise KeyError("the player table "
+                           "you're searching wasn't found."
+                           " Please, check your spelling")
 
         return serialized_players
 
@@ -104,31 +121,38 @@ class RequestsMenu:
 
         # serialized_players is a list containing one dictionary
         # containing doc_id(key):player_attributes(value) pairs
-        serialized_players: List[Dict[str, Dict[str, Union[str, list, float]]]] = self.find_the_player_table()
+        serialized_players: List[Dict[str, Dict[
+            str, Union[str, list, float]]]] = self.find_the_player_table()
 
         list_of_deserialized_players = []
         for serialized_players_dict in serialized_players:
             for doc_id, player_attributes in serialized_players_dict.items():
-                player_attributes["result_field"] = float(player_attributes["result_field"])
+                player_attributes["result_field"] = float(
+                    player_attributes["result_field"])
                 player = Player(**player_attributes)
 
-                opponents_faced = json.loads(player_attributes['opponents_faced'])
-                # why not append the entire list directly ? Because an empty list would be appended
+                opponents_faced = json.loads(
+                    player_attributes['opponents_faced'])
+                # why not append the entire list directly ?
+                # Because an empty list would be appended
                 for opponent in opponents_faced:
                     player.opponents_faced.append(opponent)
                 list_of_deserialized_players.append(player)
 
         return list_of_deserialized_players
 
-    def find_the_tournament_table(self) -> \
-            Tuple[str, Dict[str, Union[str, int, Dict[str, Union[str, Dict[str, str]]]]]]:
+    def find_the_tournament_table(self) -> Tuple[str, Dict[
+                str, Union[str, int, Dict[str, Union[str, Dict[str, str]]]]]]:
 
         database = self.open_database()
 
         serialized_tournament_data: List[Tuple[str, Any]] = \
-            [(table_name, table) for table_name, table in database.items() if table_name == self.which_tournament]
+            [(table_name, table) for table_name, table in database.items() if
+             table_name == self.which_tournament]
         if not serialized_tournament_data:
-            raise KeyError("the player table you're searching wasn't found. Please, check your spelling")
+            raise KeyError("the player table"
+                           " you're searching wasn't found."
+                           " Please, check your spelling")
 
         # the tuple we need is the only object in the list
         tournament_name_and_table: Tuple = serialized_tournament_data[0]
@@ -136,6 +160,7 @@ class RequestsMenu:
         return tournament_name_and_table
 
     def deserialize_tournament(self) -> Tournament:
+
         tournament_name, tournament_table = self.find_the_tournament_table()
 
         tournament_name: str = tournament_name
@@ -164,22 +189,26 @@ class RequestsMenu:
         return deserialized_tournament
 
     def deserialize_round(self, serialized_round) -> Round:
+
         round_name_field = serialized_round
         round_tournament = serialized_round["tournament"]
 
         round_s_datetime = serialized_round["start_datetime"]
-        epoch_s_datetime = datetime.datetime.fromisoformat(round_s_datetime).timestamp()
+        epoch_s_datetime = datetime.datetime.fromisoformat(
+            round_s_datetime).timestamp()
 
         round_e_datetime = serialized_round["end_datetime"]
-        epoch_e_datetime = datetime.datetime.fromisoformat(round_e_datetime).timestamp()
+        epoch_e_datetime = datetime.datetime.fromisoformat(
+            round_e_datetime).timestamp()
 
-        serialized_matches = serialized_round["dict_of_matches"]
+        serialized_matches = serialized_round["matches"]
         round_matches = {}
         for match_number, serialized_match in serialized_matches.items():
             deserialized_match = self.deserialize_matches(serialized_match)
             round_matches[f"match{match_number}"] = deserialized_match
 
-        deserialized_round = Round(round_name_field, round_tournament, epoch_s_datetime,
+        deserialized_round = Round(round_name_field, round_tournament,
+                                   epoch_s_datetime,
                                    epoch_e_datetime, round_matches)
 
         return deserialized_round
@@ -190,25 +219,31 @@ class RequestsMenu:
         match_player_2 = serialized_match["player2"]
         match_result = serialized_match["result"]
         match_round = serialized_match["round"]
-        deserialized_match = Match(match_player1, match_player_2, match_result, match_round)
+        deserialized_match = Match(match_player1, match_player_2, match_result,
+                                   match_round)
 
         return deserialized_match
 
     def players_ranking_from_a_tournament(self) -> List[Player]:
         list_of_deserialized_players: List[Player] = self.deserialize_players()
-        sorted_deserialized_players = sorted(list_of_deserialized_players, key=lambda x: x.ranking)
+        sorted_deserialized_players = sorted(list_of_deserialized_players,
+                                             key=lambda x: x.ranking)
 
-        print(f"This is the ranking from the selected tournament:\n{sorted_deserialized_players}")
+        print(f"This is the ranking from"
+              f" the selected tournament:"
+              f"\n{sorted_deserialized_players}")
 
         return sorted_deserialized_players
 
     def players_in_a_tournament_ranked_alphabetically(self) -> List[Player]:
-        list_of_deserialized_players: List[Player] = self.deserialize_players()
-        sorted_deserialized_players = sorted(list_of_deserialized_players, key=lambda x: x.last_name)
 
-        print(
-            f"those are the players from the selected tournament, ranked alphabetically:\n"
-            f"{sorted_deserialized_players}")
+        list_of_deserialized_players: List[Player] = self.deserialize_players()
+        sorted_deserialized_players = sorted(list_of_deserialized_players,
+                                             key=lambda x: x.last_name)
+
+        print(f"those are the players from the selected"
+              f" tournament, ranked alphabetically:\n"
+              f"{sorted_deserialized_players}")
 
         return sorted_deserialized_players
 
@@ -222,13 +257,15 @@ class RequestsMenu:
             for nested_table in table.values():
                 if list(nested_table.keys())[0] == "last_name":
                     player_table = nested_table
-                    player_table["result_field"] = float(player_table["result_field"])
+                    player_table["result_field"] = float(
+                        player_table["result_field"])
                     player = Player(**player_table)
                     all_players.append(player)
 
         return all_players
 
     def all_tournaments_players_ranking(self) -> List[Player]:
+
         all_players = self.gather_players_from_all_tournaments()
 
         for player in all_players:
@@ -239,22 +276,26 @@ class RequestsMenu:
         for player in all_players:
             player.ranking = -player.__getattribute__("ranking")
 
-        print(f"this is the ranking of all the players available in the database:\n "
+        print(f"this is the ranking of all the players"
+              f" available in the database:\n "
               f"{all_players_ranked}")
 
         return all_players_ranked
 
     def all_tournaments_players_ranked_alphabetically(self) -> List[Player]:
+
         all_players: List[Player] = self.gather_players_from_all_tournaments()
 
         all_players_ranked = sorted(all_players, key=attrgetter("last_name"))
 
-        print(f"those are the players from all the tournaments available in the database,"
+        print(f"those are the players from all the"
+              f" tournaments available in the database,"
               f" ranked alphabetically:\n{all_players_ranked}")
 
         return all_players_ranked
 
     def all_tournaments(self) -> List[Tournament]:
+
         database = self.open_database()
 
         all_tournaments = []
@@ -270,21 +311,26 @@ class RequestsMenu:
         return all_tournaments
 
     def all_matches_in_a_tournament(self):
+
         deserialized_tournament = self.deserialize_tournament()
 
         all_matches_in_a_tournament = []
         for round in deserialized_tournament.rounds.values():
-            for match in round.dict_of_matches.values():
+            for match in round.matches.values():
                 all_matches_in_a_tournament.append(match)
-        print(f"those are all the matches in the selected tournament: {all_matches_in_a_tournament} ")
+        print(f"those are all the matches in the "
+              f"selected tournament: {all_matches_in_a_tournament} ")
+
         return all_matches_in_a_tournament
 
     def all_rounds_in_a_tournament(self):
+
         deserialized_tournament = self.deserialize_tournament()
         all_rounds_in_a_tournament = []
         for round in deserialized_tournament.rounds.values():
             all_rounds_in_a_tournament.append(round)
 
-        print(f"those are all the rounds in the selected tournament: {all_rounds_in_a_tournament} ")
+        print(f"those are all the rounds in the"
+              f" selected tournament: {all_rounds_in_a_tournament} ")
 
         return all_rounds_in_a_tournament
