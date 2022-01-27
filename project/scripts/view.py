@@ -37,11 +37,11 @@ def collect_tournament_info() -> Tuple[str, str, str, str, str, str, str]:
               " program is case sensitive."
               " Do not type unnecessary spaces.\n"
               "Also, two tournaments cannot"
-              " be saved with the same name in the database.\n "
+              " be saved with the same name in the database.\n"
               "If, for example,"
               " a tournament named 'cheese' is already in the database, "
               "and you name the present"
-              " tournament 'cheese',\n "
+              " tournament 'cheese',\n"
               "when you'll save it the previous 'cheese'"
               " tournament will be deleted.\n\n"
               "Please enter the tournament's name\n"))

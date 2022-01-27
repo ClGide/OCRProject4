@@ -28,7 +28,7 @@ def time_control(tournament: Tournament):
 
     if rd_duration == "bullet" or rd_duration == "BULLET":
         print("the round is taking place...")
-        return time.sleep(10)
+        return time.sleep(180)
     elif rd_duration == "blitz" or rd_duration == "BLITZ":
         print("the round is taking place...")
         return time.sleep(300)
