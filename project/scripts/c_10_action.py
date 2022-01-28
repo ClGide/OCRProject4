@@ -47,16 +47,15 @@ if __name__ == "__main__":
     # checking if the manager wants to save some data.
     possibly_saving_data = SaveDataInDB(tournament)
 
+    # the algorithms used for setting up the first round matches
+    # is different from the one used for setting up the
+    # subsequent rounds matches. Therefore, the first round matches
+    # are instantiated before the loop.
+    # Also, the range function starts at 1 but the first round
+    # to be instantiated in the loop is round2. Thus, the arg passed
+    # to CreatingMatchesStoringInSubsequentRounds is i+1
     if tournament.number_of_rounds > 1:
         for i in range(1, tournament.number_of_rounds):
-            # the algorithms used for setting up the first round matches
-            # is different from the one used for setting up the
-            # subsequent rounds matches. Therefore, the first round matches
-            # are instantiated before the loop.
-            # Also, the range function starts at 1 but the first round
-            # to be instantiated in the loop is round2. Thus, the arg passed
-            # to CreatingMatchesStoringInSubsequentRounds is i+1
-
             display_subsequent_round_matches(tournament)
 
             time_control(tournament)
